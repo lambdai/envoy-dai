@@ -1018,7 +1018,7 @@ void Wasm::getFunctions() {
 #undef _GET
 }
 
-Wasm::Wasm(const Wasm& wasm) {
+Wasm::Wasm(const Wasm& wasm) : enable_shared_from_this<Wasm>() {
   wasm_vm_ = wasm.wasmVm()->clone();
   general_context_ = createContext();
   getFunctions();
