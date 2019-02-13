@@ -13,12 +13,13 @@
 #include "common/common/c_smart_ptr.h"
 #include "common/common/logger.h"
 
-#include "extensions/common/wasm/wasm.h"
-
 namespace Envoy {
 namespace Extensions {
 namespace Common {
 namespace Wasm {
+
+class WasmVm;
+
 namespace Wavm {
 
 std::unique_ptr<WasmVm> createWavm();
