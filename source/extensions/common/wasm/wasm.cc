@@ -1,8 +1,9 @@
+#include "extensions/common/wasm/wasm.h"
+
 #include <stdio.h>
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "envoy/common/exception.h"
 #include "envoy/config/wasm/v2/wasm.pb.validate.h"
@@ -21,7 +22,6 @@
 #include "common/http/message_impl.h"
 #include "common/http/utility.h"
 
-#include "extensions/common/wasm/wasm.h"
 #include "extensions/common/wasm/wavm/wavm.h"
 #include "extensions/common/wasm/well_known_names.h"
 
