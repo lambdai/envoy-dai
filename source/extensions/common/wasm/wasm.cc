@@ -640,10 +640,7 @@ uint32_t Context::httpCall(absl::string_view cluster, const Pairs& request_heade
   if (timeout_milliseconds < 0)
     return 0;
   auto cluster_string = std::string(cluster);
-  auto cluster_manager = clusterManager();
-  if (!cluster_manager)
-    return 0;
-  if (cluster_manager->get(cluster_string) == nullptr)
+  if (clusterManager().get(cluster_string) == nullptr)
     return 0;
 
   Http::MessagePtr message(new Http::RequestMessageImpl(buildHeaderMapFromPairs(request_headers)));
@@ -670,7 +667,8 @@ uint32_t Context::httpCall(absl::string_view cluster, const Pairs& request_heade
 
   auto token = next_async_token_++;
   auto& handler = http_request_[token];
-  auto http_request = cluster_manager->httpAsyncClientForCluster(cluster_string)
+  auto http_request = clusterManager()
+                          .httpAsyncClientForCluster(cluster_string)
                           .send(std::move(message), handler,
                                 Http::AsyncClient::RequestOptions().setTimeout(timeout));
   if (!http_request) {
@@ -932,7 +930,10 @@ void Context::onHttpCallResponse(uint32_t token, const Pairs& response_headers,
                              trailers_ptr, trailers_size);
 }
 
-Wasm::Wasm(absl::string_view vm, absl::string_view id) {
+Wasm::Wasm(absl::string_view vm, absl::string_view id, absl::string_view initial_configuration,
+           Upstream::ClusterManager& cluster_manager, Event::Dispatcher& dispatcher)
+    : cluster_manager_(cluster_manager), dispatcher_(dispatcher),
+      initial_configuration_(initial_configuration) {
   wasm_vm_ = Common::Wasm::createWasmVm(vm);
   id_ = std::string(id);
   if (wasm_vm_) {
@@ -943,82 +944,84 @@ Wasm::Wasm(absl::string_view vm, absl::string_view id) {
 #undef _REGISTER
 
     // Calls with the "_proxy_" prefix.
-#define _REGISTER(_fn) registerCallback(wasm_vm_.get(), "_proxy_" #_fn, &_fn##Handler);
-    _REGISTER(log);
+#define _REGISTER_PROXY(_fn) registerCallback(wasm_vm_.get(), "_proxy_" #_fn, &_fn##Handler);
+    _REGISTER_PROXY(log);
 
-    _REGISTER(getRequestStreamInfoProtocol);
-    _REGISTER(getResponseStreamInfoProtocol);
+    _REGISTER_PROXY(getRequestStreamInfoProtocol);
+    _REGISTER_PROXY(getResponseStreamInfoProtocol);
 
-    _REGISTER(getRequestMetadata);
-    _REGISTER(setRequestMetadata);
-    _REGISTER(getRequestMetadataPairs);
-    _REGISTER(getResponseMetadata);
-    _REGISTER(setResponseMetadata);
-    _REGISTER(getResponseMetadataPairs);
+    _REGISTER_PROXY(getRequestMetadata);
+    _REGISTER_PROXY(setRequestMetadata);
+    _REGISTER_PROXY(getRequestMetadataPairs);
+    _REGISTER_PROXY(getResponseMetadata);
+    _REGISTER_PROXY(setResponseMetadata);
+    _REGISTER_PROXY(getResponseMetadataPairs);
 
-    _REGISTER(continueRequest);
-    _REGISTER(continueResponse);
+    _REGISTER_PROXY(continueRequest);
+    _REGISTER_PROXY(continueResponse);
 
-    _REGISTER(getSharedData);
-    _REGISTER(setSharedData);
+    _REGISTER_PROXY(getSharedData);
+    _REGISTER_PROXY(setSharedData);
 
-    _REGISTER(getRequestHeader);
-    _REGISTER(addRequestHeader);
-    _REGISTER(replaceRequestHeader);
-    _REGISTER(removeRequestHeader);
-    _REGISTER(getRequestHeaderPairs);
+    _REGISTER_PROXY(getRequestHeader);
+    _REGISTER_PROXY(addRequestHeader);
+    _REGISTER_PROXY(replaceRequestHeader);
+    _REGISTER_PROXY(removeRequestHeader);
+    _REGISTER_PROXY(getRequestHeaderPairs);
 
-    _REGISTER(getRequestTrailer);
-    _REGISTER(addRequestTrailer);
-    _REGISTER(replaceRequestTrailer);
-    _REGISTER(removeRequestTrailer);
-    _REGISTER(getRequestTrailerPairs);
+    _REGISTER_PROXY(getRequestTrailer);
+    _REGISTER_PROXY(addRequestTrailer);
+    _REGISTER_PROXY(replaceRequestTrailer);
+    _REGISTER_PROXY(removeRequestTrailer);
+    _REGISTER_PROXY(getRequestTrailerPairs);
 
-    _REGISTER(getResponseHeader);
-    _REGISTER(addResponseHeader);
-    _REGISTER(replaceResponseHeader);
-    _REGISTER(removeResponseHeader);
-    _REGISTER(getResponseHeaderPairs);
+    _REGISTER_PROXY(getResponseHeader);
+    _REGISTER_PROXY(addResponseHeader);
+    _REGISTER_PROXY(replaceResponseHeader);
+    _REGISTER_PROXY(removeResponseHeader);
+    _REGISTER_PROXY(getResponseHeaderPairs);
 
-    _REGISTER(getResponseTrailer);
-    _REGISTER(addResponseTrailer);
-    _REGISTER(replaceResponseTrailer);
-    _REGISTER(removeResponseTrailer);
-    _REGISTER(getResponseTrailerPairs);
+    _REGISTER_PROXY(getResponseTrailer);
+    _REGISTER_PROXY(addResponseTrailer);
+    _REGISTER_PROXY(replaceResponseTrailer);
+    _REGISTER_PROXY(removeResponseTrailer);
+    _REGISTER_PROXY(getResponseTrailerPairs);
 
-    _REGISTER(getRequestBodyBufferBytes);
-    _REGISTER(getResponseBodyBufferBytes);
+    _REGISTER_PROXY(getRequestBodyBufferBytes);
+    _REGISTER_PROXY(getResponseBodyBufferBytes);
 
-    _REGISTER(httpCall);
+    _REGISTER_PROXY(httpCall);
 
-    _REGISTER(setTickPeriodMilliseconds);
-#undef _REGISTER
+    _REGISTER_PROXY(setTickPeriodMilliseconds);
+#undef _REGISTER_PROXY
   }
 }
 
 void Wasm::getFunctions() {
-#define _GET(_fn) getFunction(wasm_vm_.get(), "_proxy_" #_fn, &_fn##_);
-  _GET(onStart);
-  _GET(onConfigure);
-  _GET(onTick);
+#define _GET_PROXY(_fn) getFunction(wasm_vm_.get(), "_proxy_" #_fn, &_fn##_);
+  _GET_PROXY(onStart);
+  _GET_PROXY(onConfigure);
+  _GET_PROXY(onTick);
 
-  _GET(onCreate);
-  _GET(onRequestHeaders);
-  _GET(onRequestBody);
-  _GET(onRequestTrailers);
-  _GET(onRequestMetadata);
-  _GET(onResponseHeaders);
-  _GET(onResponseBody);
-  _GET(onResponseTrailers);
-  _GET(onResponseMetadata);
-  _GET(onHttpCallResponse);
-  _GET(onLog);
-  _GET(onDone);
-  _GET(onDelete);
-#undef _GET
+  _GET_PROXY(onCreate);
+  _GET_PROXY(onRequestHeaders);
+  _GET_PROXY(onRequestBody);
+  _GET_PROXY(onRequestTrailers);
+  _GET_PROXY(onRequestMetadata);
+  _GET_PROXY(onResponseHeaders);
+  _GET_PROXY(onResponseBody);
+  _GET_PROXY(onResponseTrailers);
+  _GET_PROXY(onResponseMetadata);
+  _GET_PROXY(onHttpCallResponse);
+  _GET_PROXY(onDone);
+  _GET_PROXY(onLog);
+  _GET_PROXY(onDelete);
+#undef _GET_PROXY
 }
 
-Wasm::Wasm(const Wasm& wasm) : enable_shared_from_this<Wasm>() {
+Wasm::Wasm(const Wasm& wasm)
+    : enable_shared_from_this<Wasm>(), cluster_manager_(wasm.cluster_manager_),
+      dispatcher_(wasm.dispatcher_) {
   wasm_vm_ = wasm.wasmVm()->clone();
   general_context_ = createContext();
   getFunctions();
@@ -1030,6 +1033,8 @@ bool Wasm::initialize(const std::string& code, absl::string_view name, bool allo
   auto ok = wasm_vm_->initialize(code, name, allow_precompiled);
   if (!ok)
     return false;
+  code_ = code;
+  allow_precompiled_ = allow_precompiled;
   getFunctions();
   return true;
 }
@@ -1046,8 +1051,12 @@ void Wasm::start() { general_context_->onStart(); }
 void Wasm::setTickPeriod(std::chrono::milliseconds tick_period) {
   bool was_running = timer_ && tick_period_.count() > 0;
   tick_period_ = tick_period;
-  if (dispatcher_ && tick_ && tick_period_.count() > 0 && !was_running) {
-    timer_ = dispatcher_->createTimer([this]() { this->tickHandler(); });
+  if (tick_ && tick_period_.count() > 0 && !was_running) {
+    timer_ = dispatcher_.createTimer([weak = std::weak_ptr<Wasm>(shared_from_this())]() {
+      auto shared = weak.lock();
+      if (shared)
+        shared->tickHandler();
+    });
     timer_->enableTimer(tick_period_);
   }
 }
@@ -1213,10 +1222,12 @@ std::unique_ptr<WasmVm> createWasmVm(absl::string_view wasm_vm) {
   }
 }
 
-std::unique_ptr<Wasm> createWasm(absl::string_view id,
+std::shared_ptr<Wasm> createWasm(absl::string_view id,
                                  const envoy::config::wasm::v2::VmConfig& vm_config,
-                                 Api::Api& api) {
-  auto wasm = std::make_unique<Wasm>(vm_config.vm(), id);
+                                 Upstream::ClusterManager& cluster_manager,
+                                 Event::Dispatcher& dispatcher, Api::Api& api) {
+  auto wasm = std::make_shared<Wasm>(vm_config.vm(), id, vm_config.initial_configuration(),
+                                     cluster_manager, dispatcher);
   const auto& code = Config::DataSource::read(vm_config.code(), true, api);
   const auto& path = Config::DataSource::getPath(vm_config.code())
                          .value_or(code.empty() ? EMPTY_STRING : INLINE_STRING);
@@ -1230,16 +1241,19 @@ std::unique_ptr<Wasm> createWasm(absl::string_view id,
   return wasm;
 }
 
-std::shared_ptr<Wasm> createThreadLocalWasm(Wasm& base_wasm,
-                                            const envoy::config::wasm::v2::VmConfig& vm_config,
-                                            Event::Dispatcher& dispatcher,
-                                            absl::string_view configuration, Api::Api& api) {
+std::shared_ptr<Wasm> createThreadLocalWasm(Wasm& base_wasm, absl::string_view configuration,
+                                            Event::Dispatcher& dispatcher) {
   std::shared_ptr<Wasm> wasm;
   if (base_wasm.wasmVm()->clonable()) {
     wasm = std::make_shared<Wasm>(base_wasm);
   } else {
-    wasm = createWasm(base_wasm.id(), vm_config, api);
-    wasm->setDispatcher(dispatcher);
+    wasm = std::make_shared<Wasm>(base_wasm.wasmVm()->vm(), base_wasm.id(),
+                                  base_wasm.initial_configuration(), base_wasm.clusterManager(),
+                                  dispatcher);
+    if (!wasm->initialize(base_wasm.code(), base_wasm.id(), base_wasm.allow_precompiled())) {
+      throw WasmException("Failed to initialize WASM code");
+    }
+    wasm->configure(base_wasm.initial_configuration());
   }
   wasm->configure(configuration);
   if (!wasm->id().empty())
