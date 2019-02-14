@@ -6,6 +6,18 @@ load(
     "envoy_package",
 )
 
+load(
+    "//bazel:envoy_build_system.bzl",
+    "envoy_cc_fuzz_test",
+    "envoy_cc_test",
+    "envoy_cc_test_library",
+    "envoy_package",
+    "envoy_select_hot_restart",
+)
+load(
+    "//source/extensions:all_extensions.bzl",
+    "envoy_all_extensions",
+)
 envoy_package()
 
 envoy_cc_library(
@@ -43,3 +55,16 @@ envoy_cc_library(
         "//source/extensions/common/wasm/wavm:wavm_lib",
     ],
 )
+
+envoy_cc_test(
+    name = "shared_from_test",
+    srcs = [
+        "shared_from_test.cc",
+    ],
+    deps = [
+        #"//testing/base/public:gunit_main",
+        "//test/test_common:test_time_lib",
+        "//test/test_common:utility_lib",
+    ],
+)
+
