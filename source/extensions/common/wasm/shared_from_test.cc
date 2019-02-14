@@ -11,7 +11,7 @@ class ShareNoExplicitEnableSharedFromThis : public std::enable_shared_from_this<
 
 class ShareNoExplicitCtorNeedArg : public std::enable_shared_from_this<ShareNoExplicitCtorNeedArg> {
  public:
-  ShareNoExplicitCtorNeedArg(int i) : i_(i);
+  ShareNoExplicitCtorNeedArg(int i) : i_(i) {}
   ShareNoExplicitCtorNeedArg(const ShareNoExplicitCtorNeedArg&) /*: enable_shared_from_this<>() */ {}
  private:
   int i_;
@@ -44,7 +44,7 @@ TEST(ShareDefaultTest, copyShareNoExplicitEnableSharedFromThis) {
 
 TEST(ShareDefaultTest, copyShareNoExplicitCtorNeedArg) {
   using ShareStruct = ShareNoExplicitCtorNeedArg;
-  auto pShare = std::make_shared<ShareStruct>();
+  auto pShare = std::make_shared<ShareStruct>(1);
   EXPECT_EQ(1, pShare.use_count());
   auto copyShare = std::make_shared<ShareStruct>(*pShare);
   ASSERT_EQ(1, pShare.use_count());
