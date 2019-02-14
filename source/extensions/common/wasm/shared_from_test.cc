@@ -13,6 +13,9 @@ class ShareNoExplicitCtorNeedArg : public std::enable_shared_from_this<ShareNoEx
  public:
   ShareNoExplicitCtorNeedArg(int i) : i_(i) {}
   ShareNoExplicitCtorNeedArg(const ShareNoExplicitCtorNeedArg&) /*: enable_shared_from_this<>() */ {}
+  int getI() {
+    return i_;
+  }
  private:
   int i_;
 };
