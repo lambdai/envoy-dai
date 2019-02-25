@@ -17,6 +17,15 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "wasm_text_provider",
+    hdrs = [
+        "wasm_text_provider.h",
+        "wasm_text.h"
+    ],
+    srcs = ["wasm_text_provider.cc"],
+)
+
+envoy_cc_library(
     name = "wasm_hdr",
     hdrs = ["wasm.h"],
     deps = [
