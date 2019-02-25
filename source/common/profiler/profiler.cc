@@ -12,11 +12,29 @@ namespace Profiler {
 
 bool Cpu::profilerEnabled() { return ProfilingIsEnabledForAllThreads(); }
 
-bool Cpu::startProfiler(const std::string& output_path) {
+Bool Cpu::startProfiler(const std::string& output_path) {
   return ProfilerStart(output_path.c_str());
 }
 
 void Cpu::stopProfiler() { ProfilerStop(); }
+
+bool Heap::profilerEnabled() {
+  // check tcmalloc
+  return IsHeapProfilerRunning();
+}
+
+bool Heap::startProfiler(const std::string& output_file_name_prefix) {
+  return HeapProfilerStart(output_file_name_prefix.c_str());
+}
+
+bool Heap::stopProfiler() {
+  if (!IsHeapProfilerRunning()) {
+    return false;
+  }
+  HeapProfilerDump("stop and dump");
+  HeapProfilerStop();
+  return true;
+}
 
 void Heap::forceLink() {
   // Currently this is here to force the inclusion of the heap profiler during static linking.
@@ -37,6 +55,9 @@ bool Cpu::profilerEnabled() { return false; }
 bool Cpu::startProfiler(const std::string&) { return false; }
 void Cpu::stopProfiler() {}
 
+bool Heap::profilerEnabled() { return false; }
+bool Heap::startProfiler(const std::string&) { return false; }
+bool Heap::stopProfiler() {return false;}
 } // namespace Profiler
 } // namespace Envoy
 
