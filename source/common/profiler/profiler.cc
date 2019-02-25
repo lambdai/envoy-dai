@@ -12,7 +12,7 @@ namespace Profiler {
 
 bool Cpu::profilerEnabled() { return ProfilingIsEnabledForAllThreads(); }
 
-Bool Cpu::startProfiler(const std::string& output_path) {
+bool Cpu::startProfiler(const std::string& output_path) {
   return ProfilerStart(output_path.c_str());
 }
 
@@ -24,7 +24,11 @@ bool Heap::profilerEnabled() {
 }
 
 bool Heap::startProfiler(const std::string& output_file_name_prefix) {
-  return HeapProfilerStart(output_file_name_prefix.c_str());
+  if (IsHeapProfilerRunning()) {
+    return false;
+  }
+  HeapProfilerStart(output_file_name_prefix.c_str());
+  return true;
 }
 
 bool Heap::stopProfiler() {

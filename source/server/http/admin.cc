@@ -509,6 +509,30 @@ Http::Code AdminImpl::handlerCpuProfiler(absl::string_view url, Http::HeaderMap&
   return Http::Code::OK;
 }
 
+Http::Code AdminImpl::handlerHeapProfiler(absl::string_view url, Http::HeaderMap&,
+                                         Buffer::Instance& response, AdminStream&) {
+  Http::Utility::QueryParams query_params = Http::Utility::parseQueryString(url);
+  if (query_params.size() != 1 || query_params.begin()->first != "enable" ||
+      (query_params.begin()->second != "y" && query_params.begin()->second != "n")) {
+    response.add("?enable=<y|n>\n");
+    return Http::Code::BadRequest;
+  }
+
+  bool enable = query_params.begin()->second == "y";
+  if (enable && !Profiler::Heap::profilerEnabled()) {
+    std::string heap_profile_path = "/tmp/heap_profile";
+    if (!Profiler::Heap::startProfiler(heap_profile_path)) {
+      response.add("failure to start the heap profiler");
+      return Http::Code::InternalServerError;
+    }
+  } else if (!enable && Profiler::Heap::profilerEnabled()) {
+    Profiler::Heap::stopProfiler();
+  }
+
+  response.add("OK\n");
+  return Http::Code::OK;
+}
+
 Http::Code AdminImpl::handlerHealthcheckFail(absl::string_view, Http::HeaderMap&,
                                              Buffer::Instance& response, AdminStream&) {
   server_.failHealthcheck(true);
