@@ -734,6 +734,29 @@ bool ListenerManagerImpl::addOrUpdateListener(const envoy::api::v2::Listener& co
     name = server_.random().uuid();
   }
   const uint64_t hash = MessageUtil::hash(config);
+  // filter_chains() is RepatedPtrField which has begin() and end()
+  if (name.find("3306") != std::string::npos) {
+    ENVOY_LOG(debug, "FOO: extra listener dump: {}", name);
+    ENVOY_LOG(debug, "FOO: listener_filter size = {}", config.listener_filters().size());
+    for (const auto & listener_filter : config.listener_filters()) {
+      auto hash_code = MessageUtil::hash(listener_filter);
+      ENVOY_LOG(debug, "BAR: add/update listener filter: name = {}.{} hash={}",
+                name,
+                listener_filter.name(),
+                hash_code
+                );
+    }
+    ENVOY_LOG(debug, "FOO: filter_chains size = {}", config.filter_chains().size());
+    ENVOY_LOG(debug, "FOO: filter_chains_hash = {}", RepeatedPtrUtil::hash(config.filter_chains()));
+    /*
+    for (const auto& filter_chain : config.filter_chains()){
+
+    }
+    */
+
+  }
+
+
   ENVOY_LOG(debug, "begin add/update listener: name={} hash={}", name, hash);
 
   auto existing_active_listener = getListenerByName(active_listeners_, name);
