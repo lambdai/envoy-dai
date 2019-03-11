@@ -614,7 +614,7 @@ bool ListenerImpl::drainClose() const {
 
 void ListenerImpl::debugLog(const std::string& message) {
   UNREFERENCED_PARAMETER(message);
-  ENVOY_LOG(debug, "{}: name={}, hash={}, address={}", message, name_, hash_, address_->asString());
+  ENVOY_LOG(info, "{}: name={}, hash={}, address={}", message, name_, hash_, address_->asString());
 }
 
 void ListenerImpl::initialize() {
@@ -728,28 +728,33 @@ bool ListenerManagerImpl::addOrUpdateListener(const envoy::api::v2::Listener& co
   const uint64_t hash = MessageUtil::hash(config);
   // filter_chains() is RepatedPtrField which has begin() and end()
   if (name.find("3306") != std::string::npos) {
-    ENVOY_LOG(debug, "FOO: extra listener dump: {}", name);
-    ENVOY_LOG(debug, "FOO: listener_filter size = {}", config.listener_filters().size());
+    ENVOY_LOG(info, "FOO: extra listener dump: {}", name);
+    ENVOY_LOG(info, "FOO: listener_filter size = {}", config.listener_filters().size());
     for (const auto & listener_filter : config.listener_filters()) {
       auto hash_code = MessageUtil::hash(listener_filter);
-      ENVOY_LOG(debug, "BAR: add/update listener filter: name = {}.{} hash={}",
+      ENVOY_LOG(info, "BAR: add/update listener filter: name = {}.{} hash={}",
                 name,
                 listener_filter.name(),
                 hash_code
                 );
     }
-    ENVOY_LOG(debug, "FOO: filter_chains size = {}", config.filter_chains().size());
-    ENVOY_LOG(debug, "FOO: filter_chains_hash = {}", RepeatedPtrUtil::hash(config.filter_chains()));
-    /*
-    for (const auto& filter_chain : config.filter_chains()){
+    ENVOY_LOG(info, "FOO: filter_chains size = {}", config.filter_chains().size());
+    ENVOY_LOG(info, "FOO: filter_chains_hash = {}", RepeatedPtrUtil::hash(config.filter_chains()));
 
+    for (const auto& filter_chain : config.filter_chains()){
+      ENVOY_LOG(info, "BAR: filter_chain is {}", filter_chain.DebugString());
+      for (const auto& filter : filter_chain.filters()) {
+        ENVOY_LOG(info, "BAR: add/update filter: name = {}.{} hash={}",
+                  name,
+                  filter.name(),
+                  MessageUtil::hash(filter));
+      }
     }
-    */
 
   }
 
 
-  ENVOY_LOG(debug, "begin add/update listener: name={} hash={}", name, hash);
+  ENVOY_LOG(info, "begin add/update listener: name={} hash={}", name, hash);
 
   auto existing_active_listener = getListenerByName(active_listeners_, name);
   auto existing_warming_listener = getListenerByName(warming_listeners_, name);
@@ -760,7 +765,7 @@ bool ListenerManagerImpl::addOrUpdateListener(const envoy::api::v2::Listener& co
        (*existing_warming_listener)->blockUpdate(hash)) ||
       (existing_active_listener != active_listeners_.end() &&
        (*existing_active_listener)->blockUpdate(hash))) {
-    ENVOY_LOG(debug, "duplicate/locked listener '{}'. no add/update", name);
+    ENVOY_LOG(info, "duplicate/locked listener '{}'. no add/update", name);
     return false;
   }
 
