@@ -748,6 +748,28 @@ bool ListenerManagerImpl::addOrUpdateListener(const envoy::api::v2::Listener& co
                   name,
                   filter.name(),
                   MessageUtil::hash(filter));
+        // TODO: debug mixer named filter
+        // require huge dependency change since listener_manage should not recoginize down cast type
+        /*
+        const auto & config_as_any = filter.typed_config();
+        if (config_as_any.Is<TcpClientConfig>()) {
+          TcpClientConfig tcp_client_config;
+          config_as_any.UnpackTo(&tcp_client_config);
+          // highly suspect mixer_attributes
+          ENVOY_LOG(info, "BAR: filter  name = {}.{}.attributes hash = {}", name, filter.name(),
+                    MessageUtil::hash(tcp_client_config.mixer_attributes()));
+          for (const auto& single_attribute : tcp_client_config.mixer_attributes()) {
+            ENVOY_LOG(info, "BAZ: attr name = {}.{}.tcp_client_config.{}, hash = {}",
+                      name, filter.name(), single_attribute.key(),
+                      "todo: calculate hash, just print order here"
+                      );
+          }
+        } else if (config_as_any.Is<TcpProxy>()) {
+          ENVOY_LOG(info, "a TcpProxy filter, expecting named envoy.tcp_proxy, ignore for now");
+        } else {
+          ENVOY_LOG(info, "BAR: neither TcpProxy nor TcpClientConfig");
+        }
+        */
       }
     }
 
