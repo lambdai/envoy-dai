@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 
@@ -110,8 +111,7 @@ private:
   Stats::Scope& stats_scope_;
   SslSocketFactoryStats stats_;
   Envoy::Ssl::ClientContextConfigPtr config_;
-  mutable absl::Mutex ssl_ctx_mu_;
-  Envoy::Ssl::ClientContextSharedPtr ssl_ctx_ GUARDED_BY(ssl_ctx_mu_);
+  Envoy::Ssl::ClientContextSharedPtr ssl_ctx_;
 };
 
 class ServerSslSocketFactory : public Network::TransportSocketFactory,
@@ -135,8 +135,7 @@ private:
   SslSocketFactoryStats stats_;
   Envoy::Ssl::ServerContextConfigPtr config_;
   const std::vector<std::string> server_names_;
-  mutable absl::Mutex ssl_ctx_mu_;
-  Envoy::Ssl::ServerContextSharedPtr ssl_ctx_ GUARDED_BY(ssl_ctx_mu_);
+  Envoy::Ssl::ServerContextSharedPtr ssl_ctx_;
 };
 
 } // namespace Tls

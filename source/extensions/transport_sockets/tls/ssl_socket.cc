@@ -434,11 +434,7 @@ Network::TransportSocketPtr ClientSslSocketFactory::createTransportSocket(
   // onAddOrUpdateSecret() could be invoked in the middle of checking the existence of ssl_ctx and
   // creating SslSocket using ssl_ctx. Capture ssl_ctx_ into a local variable so that we check and
   // use the same ssl_ctx to create SslSocket.
-  Envoy::Ssl::ClientContextSharedPtr ssl_ctx;
-  {
-    absl::ReaderMutexLock l(&ssl_ctx_mu_);
-    ssl_ctx = ssl_ctx_;
-  }
+  Envoy::Ssl::ClientContextSharedPtr ssl_ctx = std::atomic_load(&ssl_ctx_);
   if (ssl_ctx) {
     return std::make_unique<SslSocket>(std::move(ssl_ctx), InitialState::Client,
                                        transport_socket_options);
@@ -453,10 +449,7 @@ bool ClientSslSocketFactory::implementsSecureTransport() const { return true; }
 
 void ClientSslSocketFactory::onAddOrUpdateSecret() {
   ENVOY_LOG(debug, "Secret is updated.");
-  {
-    absl::WriterMutexLock l(&ssl_ctx_mu_);
-    ssl_ctx_ = manager_.createSslClientContext(stats_scope_, *config_);
-  }
+  std::atomic_store(&ssl_ctx_, manager_.createSslClientContext(stats_scope_, *config_));
   stats_.ssl_context_update_by_sds_.inc();
 }
 
@@ -475,11 +468,7 @@ ServerSslSocketFactory::createTransportSocket(Network::TransportSocketOptionsSha
   // onAddOrUpdateSecret() could be invoked in the middle of checking the existence of ssl_ctx and
   // creating SslSocket using ssl_ctx. Capture ssl_ctx_ into a local variable so that we check and
   // use the same ssl_ctx to create SslSocket.
-  Envoy::Ssl::ServerContextSharedPtr ssl_ctx;
-  {
-    absl::ReaderMutexLock l(&ssl_ctx_mu_);
-    ssl_ctx = ssl_ctx_;
-  }
+  Envoy::Ssl::ServerContextSharedPtr ssl_ctx = std::atomic_load(&ssl_ctx_);
   if (ssl_ctx) {
     return std::make_unique<SslSocket>(std::move(ssl_ctx), InitialState::Server, nullptr);
   } else {
@@ -492,11 +481,7 @@ ServerSslSocketFactory::createTransportSocket(Network::TransportSocketOptionsSha
 bool ServerSslSocketFactory::implementsSecureTransport() const { return true; }
 
 void ServerSslSocketFactory::onAddOrUpdateSecret() {
-  ENVOY_LOG(debug, "Secret is updated.");
-  {
-    absl::WriterMutexLock l(&ssl_ctx_mu_);
-    ssl_ctx_ = manager_.createSslServerContext(stats_scope_, *config_, server_names_);
-  }
+  std::atomic_store(&ssl_ctx_, manager_.createSslServerContext(stats_scope_, *config_, server_names_));
   stats_.ssl_context_update_by_sds_.inc();
 }
 

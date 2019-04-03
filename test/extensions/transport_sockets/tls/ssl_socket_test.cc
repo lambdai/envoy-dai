@@ -4005,6 +4005,10 @@ TEST_P(SslReadBufferLimitTest, TestBind) {
   disconnect();
 }
 
+TEST(AtomicSharedPtr, IsLockFree) {
+  Ssl::ClientContextSharedPtr shared;
+  ASSERT_FALSE(atomic_is_lock_free(static_cast<Ssl::ClientContextSharedPtr*>(nullptr)));
+}
 } // namespace Tls
 } // namespace TransportSockets
 } // namespace Extensions
