@@ -190,7 +190,7 @@ def envoy_cc_library(
             envoy_external_dep_path("spdlog"),
             envoy_external_dep_path("fmtlib"),
         ],
-        include_prefix = envoy_include_prefix(PACKAGE_NAME),
+        include_prefix = envoy_include_prefix(native.package_name()),
         alwayslink = 1,
         linkstatic = 1,
         linkstamp = select({
@@ -246,7 +246,7 @@ def envoy_cc_fuzz_test(name, corpus, deps = [], tags = [], **kwargs):
         copts = envoy_copts("@envoy", test = True),
         linkopts = envoy_test_linkopts(),
         linkstatic = 1,
-        args = [PACKAGE_NAME + "/" + corpus],
+        args = [native.package_name() + "/" + corpus],
         # No fuzzing on OS X.
         deps = select({
             "@bazel_tools//tools/osx:darwin": ["//test:dummy_main"],
@@ -451,7 +451,7 @@ def envoy_proto_library(
 # This is used for testing only.
 def envoy_proto_descriptor(name, out, srcs = [], external_deps = []):
     input_files = ["$(location " + src + ")" for src in srcs]
-    include_paths = [".", PACKAGE_NAME]
+    include_paths = [".", native.package_name()]
 
     if "api_httpbody_protos" in external_deps:
         srcs.append("@googleapis//:api_httpbody_protos_src")
