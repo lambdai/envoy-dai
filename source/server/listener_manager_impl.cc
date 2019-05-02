@@ -328,6 +328,10 @@ bool ListenerImpl::isWildcardServerName(const std::string& name) {
   return absl::StartsWith(name, "*.");
 }
 
+void ListenerImpl::preserveFilterChain(const Network::FilterChainSharedPtr& filter_chain) {
+  filter_chains_.emplace_back(filter_chain);
+}
+
 void ListenerImpl::addFilterChain(
     uint16_t destination_port, const std::vector<std::string>& destination_ips,
     const std::vector<std::string>& server_names, const std::string& transport_protocol,
@@ -340,6 +344,7 @@ void ListenerImpl::addFilterChain(
   addFilterChainForDestinationPorts(destination_ports_map_, destination_port, destination_ips,
                                     server_names, transport_protocol, application_protocols,
                                     source_type, filter_chain);
+  preserveFilterChain(filter_chain);
 }
 
 void ListenerImpl::addFilterChainForDestinationPorts(

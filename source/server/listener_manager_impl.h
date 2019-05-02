@@ -363,6 +363,8 @@ private:
       const envoy::api::v2::listener::FilterChainMatch_ConnectionSourceType source_type,
       const Network::FilterChainSharedPtr& filter_chain);
 
+  void preserveFilterChain(const Network::FilterChainSharedPtr& filter_chain);
+
   void convertDestinationIPsMapToTrie();
 
   const Network::FilterChain*
@@ -411,6 +413,8 @@ private:
   const std::string version_info_;
   Network::Socket::OptionsSharedPtr listen_socket_options_;
   const std::chrono::milliseconds listener_filters_timeout_;
+  std::vector<Network::FilterChainSharedPtr> filter_chains_;
+
 };
 
 class FilterChainImpl : public Network::FilterChain {
