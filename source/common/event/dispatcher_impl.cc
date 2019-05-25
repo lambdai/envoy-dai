@@ -159,7 +159,7 @@ void DispatcherImpl::post(std::function<void()> callback) {
   {
     Thread::LockGuard lock(post_lock_);
     do_post = post_callbacks_.empty();
-    post_callbacks_.push_back(callback);
+    post_callbacks_.emplace_back(std::move(callback));
   }
 
   if (do_post) {
@@ -192,7 +192,7 @@ void DispatcherImpl::runPostCallbacks() {
       if (post_callbacks_.empty()) {
         return;
       }
-      callback = post_callbacks_.front();
+      callback = std::move(post_callbacks_.front());
       post_callbacks_.pop_front();
     }
     callback();

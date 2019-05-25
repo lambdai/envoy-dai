@@ -185,7 +185,8 @@ public:
    *              run() will return.
    */
   enum class RunType {
-    Block,       // Executes any events that have been activated, then exit.
+    Block,       // Executes any events that have been registered, or until
+                 // loopExit() is called, and then exit.
     NonBlock,    // Waits for any pending events to activate, executes them,
                  // then exits. Exits immediately if there are no pending or
                  // active events.

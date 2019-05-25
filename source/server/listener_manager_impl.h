@@ -362,6 +362,5 @@ private:
   Network::Socket::OptionsSharedPtr listen_socket_options_;
   const std::chrono::milliseconds listener_filters_timeout_;
 };
-
 } // namespace Server
 } // namespace Envoy
