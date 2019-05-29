@@ -95,8 +95,9 @@ ConnectionPool::Cancellable* ConnPoolImpl::newStream(StreamDecoder& response_dec
   while (!ready_clients_.empty()) {
     if (!ready_clients_.front()->codec_client_->isAlive()) {
       // anything else?
-      auto client = std::move(ready_clients_.front());
-      dispatcher_.deferredDelete(client->removeFromList(ready_clients_));
+      auto& client = *ready_clients_.front();
+      // close() will defer delete itself
+      client.codec_client_->close();
       continue;
     }
     // // A client in use should consume read buffer before handling remote close event.
