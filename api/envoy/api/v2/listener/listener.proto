@@ -196,6 +196,8 @@ message FilterChain {
 
   // See :ref:`base.TransportSocket<envoy_api_msg_core.TransportSocket>` description.
   core.TransportSocket transport_socket = 6;
+
+  string name = 10;
 }
 
 message ListenerFilter {

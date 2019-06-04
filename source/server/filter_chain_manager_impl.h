@@ -11,6 +11,8 @@
 #include "common/network/lc_trie.h"
 
 #include "absl/container/flat_hash_map.h"
+#include "server/fcds_api.h"
+#include "server/lds_api.h"
 
 namespace Envoy {
 namespace Server {
@@ -128,8 +130,16 @@ private:
   // Mapping of FilterChain's configured destination ports, IPs, server names, transport protocols
   // and application protocols, using structures defined above.
   DestinationPortsMap destination_ports_map_;
+<<<<<<< HEAD
   Network::Address::InstanceConstSharedPtr address_;
   ProtobufMessage::ValidationVisitor& validation_visitor_;
+=======
+  // FilterChainList active_filter_chains_;
+  // FilterChainList warming_filter_chains_;
+  // std::list<DrainingFilterChain> draining_filter_chain_;
+  // ConfigTracker::EntryOwnerPtr config_tracker_entry_;
+  // FcdsApiPtr fcds_api_;
+>>>>>>> 2baecd0f7... fcds: proto and build
 };
 
 class FilterChainImpl : public Network::FilterChain {
