@@ -33,8 +33,27 @@ typedef std::unique_ptr<FcdsApi> FcdsApiPtr;
 /**
  * FCDS API implementation that fetches via Subscription.
  */
-class FcdsApiImpl : public FcdsApi,
+class FcdsApiBase : public FcdsApi,
                     Config::SubscriptionCallbacks,
-                    Logger::Loggable<Logger::Id::upstream> {};
+                    Logger::Loggable<Logger::Id::upstream> {
+public:
+  std::string resourceName(const ProtobufWkt::Any& resource) override;
+
+protected:
+  ProtobufMessage::ValidationVisitor& validation_visitor_;
+};
+
+class FcdsApiFromLds : public FcdsApiBase {
+
+  void onConfigUpdate(const Protobuf::RepeatedPtrField<ProtobufWkt::Any>& resources,
+                      const std::string& version_info) override;
+
+  void onConfigUpdate(const Protobuf::RepeatedPtrField<envoy::api::v2::Resource>& added_resources,
+                      const Protobuf::RepeatedPtrField<std::string>& removed_resources,
+                      const std::string& system_version_info) override;
+
+  void onConfigUpdateFailed(const EnvoyException* e) override;
+};
+
 } // namespace Server
 } // namespace Envoy

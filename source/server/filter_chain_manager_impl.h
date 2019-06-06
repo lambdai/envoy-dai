@@ -10,9 +10,10 @@
 #include "common/network/cidr_range.h"
 #include "common/network/lc_trie.h"
 
-#include "absl/container/flat_hash_map.h"
 #include "server/fcds_api.h"
 #include "server/lds_api.h"
+
+#include "absl/container/flat_hash_map.h"
 
 namespace Envoy {
 namespace Server {
@@ -28,6 +29,7 @@ public:
  * Implementation of FilterChainManager.
  */
 class FilterChainManagerImpl : public Network::FilterChainManager,
+                               public Config::SubscriptionCallbacks,
                                Logger::Loggable<Logger::Id::config> {
 public:
   FilterChainManagerImpl(Network::Address::InstanceConstSharedPtr address,
@@ -42,6 +44,15 @@ public:
   addFilterChain(absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
                  FilterChainFactoryBuilder& b);
   static bool isWildcardServerName(const std::string& name);
+
+  // TODO(implement)
+  // Config::SubscriptionCallbacks
+  void onConfigUpdate(const Protobuf::RepeatedPtrField<ProtobufWkt::Any>& resources,
+                      const std::string& version_info) {}
+  void onConfigUpdate(const Protobuf::RepeatedPtrField<envoy::api::v2::Resource>& added_resources,
+                      const Protobuf::RepeatedPtrField<std::string>& removed_resources,
+                      const std::string& system_version_info) {}
+  void onConfigUpdateFailed(const EnvoyException* e) {}
 
 private:
   void convertIPsToTries();
