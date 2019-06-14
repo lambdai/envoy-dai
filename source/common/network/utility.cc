@@ -281,6 +281,44 @@ bool Utility::isLocalConnection(const Network::ConnectionSocket& socket) {
   return false;
 }
 
+bool Utility::isLocalIpAddress(const Address::Instance& address) {
+  if (address.type() != Envoy::Network::Address::Type::Ip) {
+    return false;
+  }
+
+  if (isLoopbackAddress(address)) {
+    return false;
+  }
+
+  struct ifaddrs* ifaddr;
+  const int rc = getifaddrs(&ifaddr);
+  Cleanup ifaddr_cleanup([ifaddr] {
+    if (ifaddr) {
+      freeifaddrs(ifaddr);
+    }
+  });
+  RELEASE_ASSERT(rc == 0, "");
+
+  auto af_look_up = (address.ip()->version() == Address::IpVersion::v4) ? AF_INET : AF_INET6;
+
+  for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+    if (ifa->ifa_addr == nullptr) {
+      continue;
+    }
+
+    if (ifa->ifa_addr->sa_family == af_look_up) {
+      const auto* addr = reinterpret_cast<const struct sockaddr_storage*>(ifa->ifa_addr);
+      auto local_address = Address::addressFromSockAddr(
+          *addr, (af_look_up == AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6));
+
+      if (address == *local_address) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool Utility::isInternalAddress(const Address::Instance& address) {
   if (address.type() != Address::Type::Ip) {
     return false;

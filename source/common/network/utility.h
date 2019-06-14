@@ -140,6 +140,12 @@ public:
   static bool isLocalConnection(const Network::ConnectionSocket& socket);
 
   /**
+   * Determine whether this is a local address.
+   * @return bool the address is a local address.
+   */
+  static bool isLocalIpAddress(const Address::Instance& address);
+
+  /**
    * Determine whether this is an internal (RFC1918) address.
    * @return bool the address is an RFC1918 address.
    */

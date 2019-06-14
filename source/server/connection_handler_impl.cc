@@ -126,6 +126,27 @@ ConnectionHandlerImpl::findActiveListenerByAddress(const Network::Address::Insta
     return listener_it->second.get();
   }
 
+  /*
+   * istio: if the ip is local pod ip, select the predefined listener
+   * 1. where can I find the pod ip?
+   * env:      INSTANCE_IP:                        (v1:status.podIP)
+   *
+   * 2. What the predefined listener should be?
+   */
+  if (Network::Utility::isLocalIpAddress(address)) {
+    ENVOY_LOG_TO_LOGGER(
+        logger_, error,
+        "dest ip {} is local address but hit no listener, try using blackhole listener",
+        address.ip()->addressAsString());
+    listener_it = std::find_if(
+        listeners_.begin(), listeners_.end(),
+        [](const std::pair<Network::Address::InstanceConstSharedPtr, ActiveListenerPtr>& p) {
+          return p.second->config_.name() == "ISTIO_WILDCARD_PORT_LISTENER";
+        });
+    if (listener_it != listeners_.end()) {
+      return listener_it->second.get();
+    }
+  }
   // Otherwise, we need to look for the wild card match, i.e., 0.0.0.0:[address_port].
   // We do not return stopped listeners.
   // TODO(wattli): consolidate with previous search for more efficiency.
