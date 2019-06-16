@@ -81,20 +81,14 @@ public:
 
   // Dummy method
   void close() override {}
-
   Network::Address::SocketType socketType() const override {
     return Network::Address::SocketType::Stream;
   }
   void setLocalAddress(const Network::Address::InstanceConstSharedPtr&) override {}
-
   void restoreLocalAddress(const Network::Address::InstanceConstSharedPtr&) override { return; }
-
   void setRemoteAddress(const Network::Address::InstanceConstSharedPtr&) override {}
-
   bool localAddressRestored() const override { return true; }
-
   void setDetectedTransportProtocol(absl::string_view) override {}
-
   void setRequestedApplicationProtocols(const std::vector<absl::string_view>&) override {}
   void addOption(const OptionConstSharedPtr&) override {}
   void addOptions(const OptionsSharedPtr&) override {}
@@ -154,7 +148,6 @@ const std::string yaml_single_dst_port_bottom = R"EOF(
 } // namespace
 
 class FilterChainBenchmarkFixture : public benchmark::Fixture {
-
 public:
   void SetUp(const ::benchmark::State& state) {
     int64_t input_size = state.range(0);
@@ -218,12 +211,15 @@ BENCHMARK_REGISTER_F(FilterChainBenchmarkFixture, FilterChainFindTest)
     });
 
 /*
---------------------------------------------------------------------------------------------------
-Benchmark                                                        Time             CPU   Iterations
---------------------------------------------------------------------------------------------------
-FilterChainBenchmarkFixture/ListenerConfigUpdateTest/1     2605268 ns      2604634 ns          267
-FilterChainBenchmarkFixture/ListenerConfigUpdateTest/8     8674554 ns      8666495 ns           81
-FilterChainBenchmarkFixture/ListenerConfigUpdateTest/64   57806353 ns     57717707 ns           12
+-----------------------------------------------------------------------------------------------------
+Benchmark                                                           Time             CPU   Iterations
+-----------------------------------------------------------------------------------------------------
+FilterChainBenchmarkFixture/FilterChainManagerBuildTest/1     2596653 ns      2595281 ns          272
+FilterChainBenchmarkFixture/FilterChainManagerBuildTest/8     8696291 ns      8689030 ns           81
+FilterChainBenchmarkFixture/FilterChainManagerBuildTest/64   56617002 ns     56539294 ns           12
+FilterChainBenchmarkFixture/FilterChainFindTest/1                3886 ns         3886 ns       179753
+FilterChainBenchmarkFixture/FilterChainFindTest/8               31202 ns        31198 ns        22598
+FilterChainBenchmarkFixture/FilterChainFindTest/64             253304 ns       253241 ns         2756
 */
 } // namespace Server
 } // namespace Envoy
