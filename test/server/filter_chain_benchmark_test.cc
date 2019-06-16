@@ -1,12 +1,15 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "envoy/network/connection.h"
+#include "envoy/network/listen_socket.h"
 #include "envoy/protobuf/message_validator.h"
 
 #include "server/filter_chain_manager_impl.h"
 
 #include "extensions/transport_sockets/well_known_names.h"
 
+#include "test/mocks/network/mocks.h"
 #include "test/test_common/environment.h"
 #include "test/test_common/utility.h"
 
@@ -25,10 +28,88 @@ namespace {
 class MockFilterChainFactoryBuilder : public FilterChainFactoryBuilder {
   std::unique_ptr<Network::FilterChain>
   buildFilterChain(const ::envoy::api::v2::listener::FilterChain&) const override {
-    return nullptr;
+    // A place holder to be found
+    return std::make_unique<Network::MockFilterChain>();
   }
 };
 
+class MockConnectionSocket : public Network::ConnectionSocket {
+public:
+  MockConnectionSocket() = default;
+  static std::unique_ptr<MockConnectionSocket>
+  createMockConnectionSocket(uint16_t destination_port, const std::string& destination_address,
+                             const std::string& server_name, const std::string& transport_protocol,
+                             const std::vector<std::string>& application_protocols,
+                             const std::string& source_address, uint16_t source_port) {
+    auto res = std::make_unique<MockConnectionSocket>();
+
+    if (absl::StartsWith(destination_address, "/")) {
+      res->local_address_ = std::make_shared<Network::Address::PipeInstance>(destination_address);
+    } else {
+      res->local_address_ =
+          Network::Utility::parseInternetAddress(destination_address, destination_port);
+    }
+    if (absl::StartsWith(source_address, "/")) {
+      res->remote_address_ = std::make_shared<Network::Address::PipeInstance>(source_address);
+    } else {
+      res->remote_address_ = Network::Utility::parseInternetAddress(source_address, source_port);
+    }
+    res->server_name_ = server_name;
+    res->transport_protocol_ = transport_protocol;
+    res->application_protocols_ = application_protocols;
+    return res;
+  }
+
+  const Network::Address::InstanceConstSharedPtr& remoteAddress() const override {
+    return remote_address_;
+  }
+
+  const Network::Address::InstanceConstSharedPtr& localAddress() const override {
+    return local_address_;
+  }
+
+  absl::string_view detectedTransportProtocol() const override { return transport_protocol_; }
+
+  absl::string_view requestedServerName() const override { return server_name_; }
+  const std::vector<std::string>& requestedApplicationProtocols() const override {
+    return application_protocols_;
+  }
+
+  // Wont call
+  Network::IoHandle& ioHandle() override { return *io_handle_; }
+  const Network::IoHandle& ioHandle() const override { return *io_handle_; }
+
+  // Dummy method
+  void close() override {}
+
+  Network::Address::SocketType socketType() const override {
+    return Network::Address::SocketType::Stream;
+  }
+  void setLocalAddress(const Network::Address::InstanceConstSharedPtr&) override {}
+
+  void restoreLocalAddress(const Network::Address::InstanceConstSharedPtr&) override { return; }
+
+  void setRemoteAddress(const Network::Address::InstanceConstSharedPtr&) override {}
+
+  bool localAddressRestored() const override { return true; }
+
+  void setDetectedTransportProtocol(absl::string_view) override {}
+
+  void setRequestedApplicationProtocols(const std::vector<absl::string_view>&) override {}
+  void addOption(const OptionConstSharedPtr&) override {}
+  void addOptions(const OptionsSharedPtr&) override {}
+  const OptionsSharedPtr& options() const override { return options_; }
+  void setRequestedServerName(absl::string_view) override {}
+
+private:
+  Network::IoHandlePtr io_handle_;
+  OptionsSharedPtr options_;
+  Network::Address::InstanceConstSharedPtr local_address_;
+  Network::Address::InstanceConstSharedPtr remote_address_;
+  std::string server_name_;
+  std::string transport_protocol_;
+  std::vector<std::string> application_protocols_;
+};
 const std::string yaml_header = R"EOF(
     address:
       socket_address: { address: 127.0.0.1, port_value: 1234 }
@@ -73,6 +154,7 @@ const std::string yaml_single_dst_port_bottom = R"EOF(
 } // namespace
 
 class FilterChainBenchmarkFixture : public benchmark::Fixture {
+
 public:
   void SetUp(const ::benchmark::State& state) {
     int64_t input_size = state.range(0);
@@ -96,7 +178,7 @@ public:
       ProtobufMessage::getNullValidationVisitor()};
 };
 
-BENCHMARK_DEFINE_F(FilterChainBenchmarkFixture, ListenerConfigUpdateTest)
+BENCHMARK_DEFINE_F(FilterChainBenchmarkFixture, FilterChainManagerBuildTest)
 (::benchmark::State& state) {
   for (auto _ : state) {
     FilterChainManagerImpl filter_chain_manager{
@@ -105,7 +187,31 @@ BENCHMARK_DEFINE_F(FilterChainBenchmarkFixture, ListenerConfigUpdateTest)
     filter_chain_manager.addFilterChain(filter_chains_, dummy_builder_);
   }
 }
-BENCHMARK_REGISTER_F(FilterChainBenchmarkFixture, ListenerConfigUpdateTest)
+
+BENCHMARK_DEFINE_F(FilterChainBenchmarkFixture, FilterChainFindTest)
+(::benchmark::State& state) {
+  std::vector<MockConnectionSocket> sockets;
+  sockets.reserve(state.range(0));
+  for (int i = 0; i < state.range(0); i++) {
+    sockets.push_back(std::move(*MockConnectionSocket::createMockConnectionSocket(
+        10000 + i, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111)));
+  }
+  FilterChainManagerImpl filter_chain_manager{
+      std::make_shared<Network::Address::Ipv4Instance>("127.0.0.1", 1234),
+      ProtobufMessage::getNullValidationVisitor()};
+  filter_chain_manager.addFilterChain(filter_chains_, dummy_builder_);
+  for (auto _ : state) {
+    for (int i = 0; i < state.range(0); i++) {
+      filter_chain_manager.findFilterChain(sockets[i]);
+    }
+  }
+}
+BENCHMARK_REGISTER_F(FilterChainBenchmarkFixture, FilterChainManagerBuildTest)
+    ->Ranges({
+        // scale of the chains
+        {1, 64},
+    });
+BENCHMARK_REGISTER_F(FilterChainBenchmarkFixture, FilterChainFindTest)
     ->Ranges({
         // scale of the chains
         {1, 64},

@@ -315,6 +315,7 @@ envoy_cc_test_binary(
     deps = [
         "//source/server:filter_chain_manager_lib",
         "//test/test_common:environment_lib",
+        "//test/mocks/network:network_mocks",
         # tranport socket config registration
         "//source/extensions/transport_sockets/tls:config",
     ],
