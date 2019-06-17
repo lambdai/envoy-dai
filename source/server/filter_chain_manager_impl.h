@@ -27,6 +27,7 @@ public:
 
 /**
  * Implementation of FilterChainManager.
+ * Encapulating the subscription from FCDS Api. The view from Listener is always 
  */
 class FilterChainManagerImpl : public Network::FilterChainManager,
                                public Config::SubscriptionCallbacks,
@@ -43,18 +44,46 @@ public:
   void
   addFilterChain(absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
                  FilterChainFactoryBuilder& b);
+
+  void
+  addFilterChain(absl::Span<const ::envoy::api::v2::listener::FilterChainConfiguration* const> filter_chain_names,
+                 FilterChainFactoryBuilder& b) {}
+
   static bool isWildcardServerName(const std::string& name);
 
-  // TODO(implement)
-  // Config::SubscriptionCallbacks
+  // TODO(silentdai): implement Config::SubscriptionCallbacks
   void onConfigUpdate(const Protobuf::RepeatedPtrField<ProtobufWkt::Any>& resources,
-                      const std::string& version_info) {}
+                      const std::string& version_info) override {}                 
   void onConfigUpdate(const Protobuf::RepeatedPtrField<envoy::api::v2::Resource>& added_resources,
                       const Protobuf::RepeatedPtrField<std::string>& removed_resources,
-                      const std::string& system_version_info) {}
+                      const std::string& system_version_info) {
+                      }
   void onConfigUpdateFailed(const EnvoyException* e) {}
 
+  struct FilterChainLookup {
+    DestinationPortsMap destination_ports_map_;
+    // LocalInitManager or server_global_init_manager;
+    void init_done() {
+      /*
+      filter_chain_manager.signal("this lookup is warmed", this)
+      if (belonging listener is not ready) {
+        signal listener;
+        // if listener attempted to create more than one lookup, it's listener that waiting for the last ready.
+      } else {
+        signal fc manager that filter_chain_Lookup is ready. This may requires something other than
+        init manager where ready is only available at NOT_YET_READY state.
+      }
+       */ 
+    }
+  };
 private:
+  // Stateless method. Will optimize in the future.
+  // This is the new filter chains. It could originates from FCDS or LDS.
+  void resetFilterChains(absl::Span<const envoy::api::v2::listener::FilterChain> filter_chains) {}
+
+  void
+  addFilterChainInternal(absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
+                 FilterChainFactoryBuilder& b);
   void convertIPsToTries();
   using SourcePortsMap = absl::flat_hash_map<uint16_t, Network::FilterChainSharedPtr>;
   using SourcePortsMapSharedPtr = std::shared_ptr<SourcePortsMap>;
@@ -141,6 +170,9 @@ private:
   // Mapping of FilterChain's configured destination ports, IPs, server names, transport protocols
   // and application protocols, using structures defined above.
   DestinationPortsMap destination_ports_map_;
+  std::shared_ptr<FilterChainLookup> active_lookup_;
+  std::shared_ptr<FilterChainLookup> warming_lookup_;
+
   Network::Address::InstanceConstSharedPtr address_;
   ProtobufMessage::ValidationVisitor& validation_visitor_;
   // FilterChainList active_filter_chains_;

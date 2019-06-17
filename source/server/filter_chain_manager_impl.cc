@@ -34,6 +34,23 @@ bool FilterChainManagerImpl::isWildcardServerName(const std::string& name) {
 void FilterChainManagerImpl::addFilterChain(
     absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
     FilterChainFactoryBuilder& b) {
+  // TODO: smarter at seeing if we do need a drain
+  // TODO(silentdai): to drain the old lookup
+  auto old_warming_lookup = std::move(warming_lookup_);
+
+  warming_lookup = std::make_shared<FilterChainLookup>();
+  // addFilterchainInternal(warming_lookup_, filter_chain_span, b);
+  auto version_info = "LATERST_FROM_LDS";
+  Protobuf::RepeatedPtrField<ProtobufWkt::Any> resources_from_lds;
+  for (const auto& filter_chain : filter_chain_span) {
+    *resources_from_lds.Add() = *filter_chain;
+  }
+  onConfigUpdate(reources_from_lds, version_info);
+}
+
+void FilterChainManagerImpl::addFilterChainInternal(
+    absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
+    FilterChainFactoryBuilder& b) {
   std::unordered_set<envoy::api::v2::listener::FilterChainMatch, MessageUtil, MessageUtil>
       filter_chains;
   for (const auto& filter_chain : filter_chain_span) {
@@ -488,6 +505,15 @@ void FilterChainManagerImpl::convertIPsToTries() {
     }
 
     destination_ips_pair.second = std::make_unique<DestinationIPsTrie>(destination_ips_list, true);
+  }
+}
+
+void FilterChainManagerImpl::onConfigUpdate(
+    const Protobuf::RepeatedPtrField<ProtobufWkt::Any>& resources,
+    const std::string& version_info) {
+  Protobuf::RepeatedPtrField<envoy::api::v2::Resource> ;
+  for (const auto& filter_chain_resource : resources) {
+    auto filter_chain = MessageUtil::anyConvert<envoy::api::v2::listener::FilterChain>(filter_chain_resource, validation_visitor_);
   }
 }
 } // namespace Server
