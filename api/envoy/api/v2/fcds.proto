@@ -27,6 +27,7 @@ option (gogoproto.equal_all) = true;
 // The Envoy instance initiates an RPC at startup to discover a list of
 // FilterChains. Existing connections which bind to obsoleted filterchains
 // will be drained.
+// [#not-implemented-hide:]
 service FilterChainDiscoveryService {
   rpc StreamFilterChains(stream DiscoveryRequest) returns (stream DiscoveryResponse) {
   }

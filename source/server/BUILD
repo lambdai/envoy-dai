@@ -317,7 +317,6 @@ envoy_cc_library(
         "//source/extensions/filters/listener:well_known_names",
         "//source/extensions/filters/network:well_known_names",
         "//source/extensions/transport_sockets:well_known_names",
-        "//source/server:configuration_lib",
     ],
 )
 
