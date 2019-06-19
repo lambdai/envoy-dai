@@ -172,6 +172,7 @@ private:
   // Mapping of FilterChain's configured destination ports, IPs, server names, transport protocols
   // and application protocols, using structures defined above.
   struct FilterChainLookup {
+
     // The indexed filter chain lookup table.
     DestinationPortsMap destination_ports_map_;
 
@@ -183,7 +184,55 @@ private:
     // If not extra logic might be needed to take over the ownership
     // of existing init_manager.
     Init::ManagerImpl dynamic_init_manager_{"filter_chain_init_manager"};
+
+    // `has_active_lookup_` is tricky here. It seems the condition is mutable. However, if we
+    // maintain the invariable below, in each lifetime of `FilterChainLookup` the value never
+    // change. To `FilterChainLookup` user Only transform the current `warming_lookup_` to
+    // `active_lookup_` Access `has_active_lookup_` at the beginning of `FilterChainLookup`. The
+    // value is stale soon after. Consider the case
+    //   another FCDS update request comes and new warming lookup is created.
+    // Access `has_active_lookup_` from main thread.
+    bool has_active_lookup_{false};
+    // TODO: provide a real callback
+    std::function<Init::Manager&()> init_manager_callback_;
+    std::unique_ptr<Init::Watcher> init_watcher_;
+
+    Init::Manager& getInitManager() {
+      if (has_active_lookup_) {
+        return dynamic_init_manager_;
+      } else {
+        return init_manager_callback_();
+      }
+    }
+    void initialize() {
+      if (has_active_lookup_) {
+        ENVOY_LOG(info, "initialize lookup with its local init manager");
+        dynamic_init_manager_.initialize(*init_watcher_);
+      }
+    }
   };
+
+  std::unique_ptr<FilterChainLookup> createFilterChainLookup() {
+    auto res = std::make_unique<FilterChainLookup>();
+    res->has_active_lookup_ = active_lookup_ != nullptr;
+    // TODO: Maybe it should be evaluate at this point.
+    res->init_manager_callback_ = nullptr;
+    res->init_watcher_ = std::make_unique<Init::WatcherImpl>(
+        "filterlookup", [lookup = res.get(), this]() { warmed(lookup); });
+    res->initialize();
+    return res;
+  }
+
+  void warmed(FilterChainLookup* warming_lookup) {
+    if (warming_lookup != warming_lookup_.get()) {
+      ENVOY_LOG(error, "transforming warmed up lookup {} but is replaced by newer warming one {}. ",
+                static_cast<void*>(warming_lookup), static_cast<void*>(warming_lookup_.get()));
+      return;
+    } else {
+      ENVOY_LOG(info, "updating to warmed up lookup {}", static_cast<void*>(warming_lookup));
+      std::swap(warming_lookup_, active_lookup_);
+    }
+  }
 
   // The invariant:
   // Once the active one is ready, there is always an active one until shutdown.
