@@ -33,17 +33,13 @@ typedef std::unique_ptr<FcdsApi> FcdsApiPtr;
 /**
  * FCDS API implementation that fetches via Subscription.
  */
-class FcdsApiBase : public FcdsApi,
-                    Config::SubscriptionCallbacks,
-                    Logger::Loggable<Logger::Id::upstream> {
+
+class FcdsApiFromLds : public FcdsApi, public Config::SubscriptionCallbacks {
 public:
+  FcdsApiFromLds(ProtobufMessage::ValidationVisitor& validation_visitor)
+      : validation_visitor_(validation_visitor) {}
+
   std::string resourceName(const ProtobufWkt::Any& resource) override;
-
-protected:
-  ProtobufMessage::ValidationVisitor& validation_visitor_;
-};
-
-class FcdsApiFromLds : public FcdsApiBase {
 
   void onConfigUpdate(const Protobuf::RepeatedPtrField<ProtobufWkt::Any>& resources,
                       const std::string& version_info) override;
@@ -53,6 +49,10 @@ class FcdsApiFromLds : public FcdsApiBase {
                       const std::string& system_version_info) override;
 
   void onConfigUpdateFailed(const EnvoyException* e) override;
+  std::string versionInfo() const override { return "fake_version"; }
+
+private:
+  ProtobufMessage::ValidationVisitor& validation_visitor_;
 };
 
 } // namespace Server

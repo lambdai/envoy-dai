@@ -7,6 +7,7 @@
 #include "envoy/server/transport_socket_config.h"
 
 #include "common/common/logger.h"
+#include "common/init/manager_impl.h"
 #include "common/network/cidr_range.h"
 #include "common/network/lc_trie.h"
 
@@ -18,6 +19,8 @@
 namespace Envoy {
 namespace Server {
 
+class FilterChainImpl;
+
 class FilterChainFactoryBuilder {
 public:
   virtual ~FilterChainFactoryBuilder() = default;
@@ -27,11 +30,14 @@ public:
 
 /**
  * Implementation of FilterChainManager.
- * Encapulating the subscription from FCDS Api. The view from Listener is always 
+ * Encapulating the subscription from FCDS Api.
  */
 class FilterChainManagerImpl : public Network::FilterChainManager,
                                public Config::SubscriptionCallbacks,
                                Logger::Loggable<Logger::Id::config> {
+
+  using FcProto = ::envoy::api::v2::listener::FilterChain;
+
 public:
   FilterChainManagerImpl(Network::Address::InstanceConstSharedPtr address,
                          ProtobufMessage::ValidationVisitor& visitor)
@@ -45,46 +51,40 @@ public:
   addFilterChain(absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
                  FilterChainFactoryBuilder& b);
 
-  void
-  addFilterChain(absl::Span<const ::envoy::api::v2::listener::FilterChainConfiguration* const> filter_chain_names,
-                 FilterChainFactoryBuilder& b) {}
+  void addFilterChainInternalForFcds(
+      absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
+      FilterChainFactoryBuilder& b);
+  void addFilterChainInternal(
+      absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
+      FilterChainFactoryBuilder& b);
+
+  // TODO(silentdai) : future interface. Listener provides only names.
+  // void addFilterChain(absl::Span<const ::envoy::api::v2::listener::FilterChainConfiguration*
+  // const>
+  //                         filter_chain_names,
+  //                     FilterChainFactoryBuilder& b) {}
 
   static bool isWildcardServerName(const std::string& name);
 
   // TODO(silentdai): implement Config::SubscriptionCallbacks
   void onConfigUpdate(const Protobuf::RepeatedPtrField<ProtobufWkt::Any>& resources,
-                      const std::string& version_info) override {}                 
+                      const std::string& version_info) override {
+    ENVOY_LOG(info, "{}{}", resources.size(), version_info);
+  }
   void onConfigUpdate(const Protobuf::RepeatedPtrField<envoy::api::v2::Resource>& added_resources,
                       const Protobuf::RepeatedPtrField<std::string>& removed_resources,
-                      const std::string& system_version_info) {
-                      }
-  void onConfigUpdateFailed(const EnvoyException* e) {}
+                      const std::string& system_version_info) override {
+    ENVOY_LOG(info, "{}{}{}", added_resources.size(), removed_resources.size(),
+              system_version_info);
+  }
+  void onConfigUpdateFailed(const EnvoyException* e) override { throw *e; }
 
-  struct FilterChainLookup {
-    DestinationPortsMap destination_ports_map_;
-    // LocalInitManager or server_global_init_manager;
-    void init_done() {
-      /*
-      filter_chain_manager.signal("this lookup is warmed", this)
-      if (belonging listener is not ready) {
-        signal listener;
-        // if listener attempted to create more than one lookup, it's listener that waiting for the last ready.
-      } else {
-        signal fc manager that filter_chain_Lookup is ready. This may requires something other than
-        init manager where ready is only available at NOT_YET_READY state.
-      }
-       */ 
-    }
-  };
-private:
-  // Stateless method. Will optimize in the future.
-  // This is the new filter chains. It could originates from FCDS or LDS.
-  void resetFilterChains(absl::Span<const envoy::api::v2::listener::FilterChain> filter_chains) {}
-
-  void
-  addFilterChainInternal(absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
-                 FilterChainFactoryBuilder& b);
-  void convertIPsToTries();
+  std::string resourceName(const ProtobufWkt::Any& resource) override {
+    return MessageUtil::anyConvert<envoy::api::v2::listener::FilterChain>(resource,
+                                                                          validation_visitor_)
+        .name();
+  }
+  // In order to share between internal class
   using SourcePortsMap = absl::flat_hash_map<uint16_t, Network::FilterChainSharedPtr>;
   using SourcePortsMapSharedPtr = std::shared_ptr<SourcePortsMap>;
   using SourceIPsMap = absl::flat_hash_map<std::string, SourcePortsMapSharedPtr>;
@@ -103,7 +103,9 @@ private:
   using DestinationIPsTriePtr = std::unique_ptr<DestinationIPsTrie>;
   using DestinationPortsMap =
       absl::flat_hash_map<uint16_t, std::pair<DestinationIPsMap, DestinationIPsTriePtr>>;
+  static void convertIPsToTries(DestinationPortsMap& destination_ports_map);
 
+private:
   void addFilterChainForDestinationPorts(
       DestinationPortsMap& destination_ports_map, uint16_t destination_port,
       const std::vector<std::string>& destination_ips, const std::vector<std::string>& server_names,
@@ -169,17 +171,34 @@ private:
 
   // Mapping of FilterChain's configured destination ports, IPs, server names, transport protocols
   // and application protocols, using structures defined above.
-  DestinationPortsMap destination_ports_map_;
+  struct FilterChainLookup {
+    // The indexed filter chain lookup table.
+    DestinationPortsMap destination_ports_map_;
+
+    std::unordered_map<FcProto, std::shared_ptr<Network::FilterChain>, MessageUtil, MessageUtil>
+        existing_active_filter_chains_;
+
+    // Used during warm up, notified by dependencies, and notify parent that the index is ready.
+    // TODO(silentdai): verify that ainitmanager could be released during the release.
+    // If not extra logic might be needed to take over the ownership
+    // of existing init_manager.
+    Init::ManagerImpl dynamic_init_manager_{"filter_chain_init_manager"};
+  };
+
+  // The invariant:
+  // Once the active one is ready, there is always an active one until shutdown.
+  // Warming one could be replaced by another warming lookup. The user is responsible for not
+  // overriding a new warming one by elder one. The warming lookup may replace the active_lookup
+  // atomically, or replaced by another warming up. If warming one is replaced by another warming
+  // one, the former one should have no side effect. If the warming eventually replaces the active
+  // one, the warming one could assume the active one never changed durign the warm up.
   std::shared_ptr<FilterChainLookup> active_lookup_;
   std::shared_ptr<FilterChainLookup> warming_lookup_;
 
+  // The address should never change during the lifetime of the filter chain manager.
+  // TODO(silentdai): declare const
   Network::Address::InstanceConstSharedPtr address_;
   ProtobufMessage::ValidationVisitor& validation_visitor_;
-  // FilterChainList active_filter_chains_;
-  // FilterChainList warming_filter_chains_;
-  // std::list<DrainingFilterChain> draining_filter_chain_;
-  // ConfigTracker::EntryOwnerPtr config_tracker_entry_;
-  // FcdsApiPtr fcds_api_;
 };
 
 class FilterChainImpl : public Network::FilterChain {
