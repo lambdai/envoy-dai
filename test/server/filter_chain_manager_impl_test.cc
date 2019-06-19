@@ -64,6 +64,9 @@ public:
     TestUtility::loadFromYaml(
         TestEnvironment::substitute(filter_chain_yaml, Network::Address::IpVersion::v4),
         filter_chain_template_);
+    TestUtility::loadFromYaml(
+        TestEnvironment::substitute(filter_chain_yaml_peer, Network::Address::IpVersion::v4),
+        filter_chain_template_peer_);
   }
 
   // Helper for test
@@ -123,7 +126,20 @@ public:
           keys:
           - filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/ticket_key_a"
   )EOF";
+  const std::string filter_chain_yaml_peer = R"EOF(
+      filter_chain_match:
+        destination_port: 10001
+      tls_context:
+        common_tls_context:
+          tls_certificates:
+            - certificate_chain: { filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/san_multiple_dns_cert.pem" }
+              private_key: { filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/san_multiple_dns_key.pem" }
+        session_ticket_keys:
+          keys:
+          - filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/ticket_key_a"
+  )EOF";
   envoy::api::v2::listener::FilterChain filter_chain_template_;
+  envoy::api::v2::listener::FilterChain filter_chain_template_peer_;
   MockFilterChainFactoryBuilder filter_chain_factory_builder_;
 
   // Test target
@@ -139,8 +155,27 @@ TEST_F(FilterChainManagerImplTest, FilterChainMatchNothing) {
 
 TEST_F(FilterChainManagerImplTest, AddSingleFilterChain) {
   addSingleFilterChainHelper(filter_chain_template_);
-  auto* filter_chain = findFilterChainHelper(10000, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
-  EXPECT_NE(filter_chain, nullptr);
+  auto* filter_chain_10000 =
+      findFilterChainHelper(10000, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
+  EXPECT_NE(filter_chain_10000, nullptr);
+  auto* filter_chain_10001 =
+      findFilterChainHelper(10001, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
+  EXPECT_EQ(filter_chain_10001, nullptr);
+}
+TEST_F(FilterChainManagerImplTest, OverrideSingleFilterChain) {
+  addSingleFilterChainHelper(filter_chain_template_);
+  auto* filter_chain_10000 =
+      findFilterChainHelper(10000, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
+  EXPECT_NE(filter_chain_10000, nullptr);
+  auto* filter_chain_10001 =
+      findFilterChainHelper(10001, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
+  EXPECT_EQ(filter_chain_10001, nullptr);
+  // replace port 10000 by 10001
+  addSingleFilterChainHelper(filter_chain_template_peer_);
+  filter_chain_10000 = findFilterChainHelper(10000, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
+  filter_chain_10001 = findFilterChainHelper(10001, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
+  EXPECT_NE(filter_chain_10001, nullptr);
+  EXPECT_EQ(filter_chain_10000, nullptr);
 }
 } // namespace Server
 } // namespace Envoy

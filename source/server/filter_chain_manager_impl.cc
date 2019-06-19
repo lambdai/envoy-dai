@@ -407,6 +407,10 @@ std::pair<T, std::vector<Network::Address::CidrRange>> makeCidrListEntry(const s
 const Network::FilterChain*
 FilterChainManagerImpl::findFilterChain(const Network::ConnectionSocket& socket) const {
   const auto& address = socket.localAddress();
+  if (active_lookup_ == nullptr) {
+    ENVOY_LOG(warn, "filter chains {} is not active yet", address_->asString());
+    return nullptr;
+  }
 
   // Match on destination port (only for IP addresses).
   if (address->type() == Network::Address::Type::Ip) {
