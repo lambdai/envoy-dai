@@ -67,6 +67,7 @@ public:
     TestUtility::loadFromYaml(
         TestEnvironment::substitute(filter_chain_yaml_peer, Network::Address::IpVersion::v4),
         filter_chain_template_peer_);
+    Envoy::Logger::Registry::setLogLevel(static_cast<spdlog::level::level_enum>(0));    
   }
 
   // Helper for test
@@ -162,6 +163,7 @@ TEST_F(FilterChainManagerImplTest, AddSingleFilterChain) {
       findFilterChainHelper(10001, "127.0.0.1", "", "tls", {}, "8.8.8.8", 111);
   EXPECT_EQ(filter_chain_10001, nullptr);
 }
+
 TEST_F(FilterChainManagerImplTest, OverrideSingleFilterChain) {
   addSingleFilterChainHelper(filter_chain_template_);
   auto* filter_chain_10000 =

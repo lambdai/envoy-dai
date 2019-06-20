@@ -195,6 +195,9 @@ private:
     bool has_active_lookup_{false};
     // TODO: provide a real callback
     std::function<Init::Manager&()> init_manager_callback_;
+    // TODO: replace this
+    std::function<void()> warmed_callback_;
+
     std::unique_ptr<Init::Watcher> init_watcher_;
 
     Init::Manager& getInitManager() {
@@ -208,18 +211,38 @@ private:
       if (has_active_lookup_) {
         ENVOY_LOG(info, "initialize lookup with its local init manager");
         dynamic_init_manager_.initialize(*init_watcher_);
+      } else {
+        // TODO: replace the init manager in factory_context to build the filter chains
+        ENVOY_LOG(info, "NOT DONE: replace the init manager when adding filter chain");
+        // TODO: tree-init
+        // Mark warmed immediately: lookup is ready while dependencies are not. That is
+        // ENVOY_LOG(info, "initial lookup active {} : mark {} as active immediately.",
+        //           static_cast<void*>(active_lookup_), static_cast<void*>(warming_lookup_));
+        warmed_callback_();
       }
     }
   };
 
   std::unique_ptr<FilterChainLookup> createFilterChainLookup() {
     auto res = std::make_unique<FilterChainLookup>();
-    res->has_active_lookup_ = active_lookup_ != nullptr;
+    res->has_active_lookup_ = active_lookup_.get() != nullptr;
+    ENVOY_LOG(info, "new filter chain lookup has_active_lookup = {}", res->has_active_lookup_);
     // TODO: Maybe it should be evaluate at this point.
     res->init_manager_callback_ = nullptr;
-    res->init_watcher_ = std::make_unique<Init::WatcherImpl>(
-        "filterlookup", [lookup = res.get(), this]() { warmed(lookup); });
-    res->initialize();
+    res->init_watcher_ =
+        std::make_unique<Init::WatcherImpl>("filterlookup", [lookup = res.get(), this]() {
+          warmed(lookup);
+          // TODO tree-init: alternative init manager IMPL
+          if (!lookup->has_active_lookup_) {
+          }
+        });
+    res->warmed_callback_ = [lookup = res.get(), this]() {
+      ENVOY_LOG(info, "initial lookup active {} warming {} : mark {} as active immediately.",
+                 static_cast<void*>(active_lookup_.get()),
+                 static_cast<void*>(warming_lookup_.get()),
+                 static_cast<void*>(this));
+      warmed(lookup);
+    };
     return res;
   }
 

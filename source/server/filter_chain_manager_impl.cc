@@ -38,7 +38,7 @@ void FilterChainManagerImpl::addFilterChain(
     absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
     FilterChainFactoryBuilder& b) {
 
-  addFilterChainInternal(filter_chain_span, b);
+  addFilterChainInternalForFcds(filter_chain_span, b);
   // TODO: smarter at seeing if we do need a drain
   // TODO(silentdai): to drain the old lookup
   // auto old_warming_lookup = std::move(warming_lookup_);
@@ -56,7 +56,7 @@ void FilterChainManagerImpl::addFilterChain(
 void FilterChainManagerImpl::addFilterChainInternalForFcds(
     absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
     FilterChainFactoryBuilder& b) {
-  warming_lookup_ = std::make_unique<FilterChainLookup>();
+  warming_lookup_ = createFilterChainLookup();
   using FilterChainMap = decltype(warming_lookup_->existing_active_filter_chains_);
   FilterChainMap* existing_active_filter_chains = nullptr;
   existing_active_filter_chains =
@@ -156,10 +156,13 @@ void FilterChainManagerImpl::addFilterChainInternalForFcds(
         server_names, filter_chain_match.transport_protocol(), application_protocols,
         filter_chain_match.source_type(), source_ips, filter_chain_match.source_ports(),
         existing_chain_impl);
+    ENVOY_LOG(warn, "Added a filter chain");
   }
   convertIPsToTries(warming_lookup_->destination_ports_map_);
   // delay determine the to_drain : it's possible that the new one is replaced by a even newer.
   // TODO(silentdai) : trigger fcds api
+  warming_lookup_->initialize();
+  ENVOY_LOG(warn, "initializing lookup");
 }
 
 void FilterChainManagerImpl::addFilterChainInternal(
