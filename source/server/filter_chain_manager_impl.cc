@@ -61,7 +61,6 @@ void FilterChainManagerImpl::addFilterChainInternalForFcds(
   FilterChainMap* existing_active_filter_chains = nullptr;
   existing_active_filter_chains =
       active_lookup_ == nullptr ? nullptr : &active_lookup_->existing_active_filter_chains_;
-
   // TODO(silentdai):
   // 1. provides new FC internal init manager (need to be warmed up)
   // 2. override the one in builder if needed
@@ -630,6 +629,43 @@ void FilterChainManagerImpl::convertIPsToTries(DestinationPortsMap& destination_
 
     destination_ips_pair.second = std::make_unique<DestinationIPsTrie>(destination_ips_list, true);
   }
+}
+
+void FilterChainManagerImpl::warmed(FilterChainLookup* warming_lookup) {
+    ENVOY_LOG(info, "initial lookup active {} warming {} : mark {} as active immediately.",
+          static_cast<void*>(active_lookup_.get()), static_cast<void*>(warming_lookup_.get()),
+          static_cast<void*>(this));
+    if (warming_lookup != warming_lookup_.get()) {
+      ENVOY_LOG(error, "transforming warmed up lookup {} but is replaced by newer warming one {}. ",
+                static_cast<void*>(warming_lookup), static_cast<void*>(warming_lookup_.get()));
+      return;
+    } else {
+      ENVOY_LOG(info, "updating to warmed up lookup {}", static_cast<void*>(warming_lookup));
+      std::swap(warming_lookup_, active_lookup_);
+    }
+  }
+
+  std::unique_ptr<FilterChainManagerImpl::FilterChainLookup> FilterChainManagerImpl::createFilterChainLookup() {
+    auto res = std::make_unique<FilterChainManagerImpl::FilterChainLookup>();
+    res->has_active_lookup_ = active_lookup_.get() != nullptr;
+    ENVOY_LOG(info, "new filter chain lookup has_active_lookup = {}", res->has_active_lookup_);
+    res->init_watcher_ =
+        std::make_unique<Init::WatcherImpl>("filterlookup", [lookup = res.get(), this]() {
+          warmed(lookup);
+          // TODO verify if lookup->has_active_lookup_ works as there might be multiple warming lookup
+          // TODO: here or in warmed()?
+          if (!lookup->has_active_lookup_) {
+            init_target_.ready();
+          }
+        });
+    return res;
+  }
+
+
+void FilterChainManagerImpl::FilterChainLookup::initialize() {
+  ENVOY_LOG(info, "initialize lookup with its local init manager. has_active_lookup_ = {}",
+            has_active_lookup_);
+  dynamic_init_manager_.initialize(*init_watcher_);
 }
 
 // void FilterChainManagerImpl::onConfigUpdate(

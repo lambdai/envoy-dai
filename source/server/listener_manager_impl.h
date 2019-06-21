@@ -340,9 +340,18 @@ public:
   SystemTime last_updated_;
 
 private:
+  // A non-virtual implementation that could be used in constuctor.
+  Init::Manager& getInitManager() {
+    // See initialize() for why we choose different init managers to return.
+    if (workers_started_) {
+      return dynamic_init_manager_;
+    } else {
+      return parent_.server_.initManager();
+    }
+  }
+
   ListenerManagerImpl& parent_;
   Network::Address::InstanceConstSharedPtr address_;
-  FilterChainManagerImpl filter_chain_manager_;
 
   Network::Address::SocketType socket_type_;
   Network::SocketSharedPtr socket_;
@@ -360,6 +369,9 @@ private:
   // This init manager is populated with targets from the filter chain factories, namely
   // RdsRouteConfigSubscription::init_target_, so the listener can wait for route configs.
   Init::ManagerImpl dynamic_init_manager_;
+
+  // filter_chain_manager depends on dynamic_init_manager_
+  FilterChainManagerImpl filter_chain_manager_;
 
   // This init watcher, if available, notifies the "parent" listener manager when listener
   // initialization is complete. It may be reset to cancel interest.

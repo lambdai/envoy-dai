@@ -39,9 +39,14 @@ class FilterChainManagerImpl : public Network::FilterChainManager,
   using FcProto = ::envoy::api::v2::listener::FilterChain;
 
 public:
-  FilterChainManagerImpl(Network::Address::InstanceConstSharedPtr address,
+  FilterChainManagerImpl(Init::Manager& init_manager,
+                         Network::Address::InstanceConstSharedPtr address,
                          ProtobufMessage::ValidationVisitor& visitor)
-      : address_(address), validation_visitor_(visitor) {}
+      : init_manager_(init_manager), address_(address), validation_visitor_(visitor) {
+        // FilterChainManager always use the init manager from listener. 
+        // Note that init manager could be global or dynamic depends on the phase of listener.
+        init_manager_.add(init_target_);
+      }
 
   // Network::FilterChainManager
   const Network::FilterChain*
@@ -57,12 +62,6 @@ public:
   void addFilterChainInternal(
       absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span,
       FilterChainFactoryBuilder& b);
-
-  // TODO(silentdai) : future interface. Listener provides only names.
-  // void addFilterChain(absl::Span<const ::envoy::api::v2::listener::FilterChainConfiguration*
-  // const>
-  //                         filter_chain_names,
-  //                     FilterChainFactoryBuilder& b) {}
 
   static bool isWildcardServerName(const std::string& name);
 
@@ -172,7 +171,6 @@ private:
   // Mapping of FilterChain's configured destination ports, IPs, server names, transport protocols
   // and application protocols, using structures defined above.
   struct FilterChainLookup {
-
     // The indexed filter chain lookup table.
     DestinationPortsMap destination_ports_map_;
 
@@ -180,9 +178,6 @@ private:
         existing_active_filter_chains_;
 
     // Used during warm up, notified by dependencies, and notify parent that the index is ready.
-    // TODO(silentdai): verify that ainitmanager could be released during the release.
-    // If not extra logic might be needed to take over the ownership
-    // of existing init_manager.
     Init::ManagerImpl dynamic_init_manager_{"filter_chain_init_manager"};
 
     // `has_active_lookup_` is tricky here. It seems the condition is mutable. However, if we
@@ -193,69 +188,19 @@ private:
     //   another FCDS update request comes and new warming lookup is created.
     // Access `has_active_lookup_` from main thread.
     bool has_active_lookup_{false};
-    // TODO: provide a real callback
-    std::function<Init::Manager&()> init_manager_callback_;
-    // TODO: replace this
-    std::function<void()> warmed_callback_;
 
     std::unique_ptr<Init::Watcher> init_watcher_;
 
     Init::Manager& getInitManager() {
-      if (has_active_lookup_) {
-        return dynamic_init_manager_;
-      } else {
-        return init_manager_callback_();
-      }
+      return dynamic_init_manager_;
     }
-    void initialize() {
-      if (has_active_lookup_) {
-        ENVOY_LOG(info, "initialize lookup with its local init manager");
-        dynamic_init_manager_.initialize(*init_watcher_);
-      } else {
-        // TODO: replace the init manager in factory_context to build the filter chains
-        ENVOY_LOG(info, "NOT DONE: replace the init manager when adding filter chain");
-        // TODO: tree-init
-        // Mark warmed immediately: lookup is ready while dependencies are not. That is
-        // ENVOY_LOG(info, "initial lookup active {} : mark {} as active immediately.",
-        //           static_cast<void*>(active_lookup_), static_cast<void*>(warming_lookup_));
-        warmed_callback_();
-      }
-    }
+    void initialize();
   };
 
-  std::unique_ptr<FilterChainLookup> createFilterChainLookup() {
-    auto res = std::make_unique<FilterChainLookup>();
-    res->has_active_lookup_ = active_lookup_.get() != nullptr;
-    ENVOY_LOG(info, "new filter chain lookup has_active_lookup = {}", res->has_active_lookup_);
-    // TODO: Maybe it should be evaluate at this point.
-    res->init_manager_callback_ = nullptr;
-    res->init_watcher_ =
-        std::make_unique<Init::WatcherImpl>("filterlookup", [lookup = res.get(), this]() {
-          warmed(lookup);
-          // TODO tree-init: alternative init manager IMPL
-          if (!lookup->has_active_lookup_) {
-          }
-        });
-    res->warmed_callback_ = [lookup = res.get(), this]() {
-      ENVOY_LOG(info, "initial lookup active {} warming {} : mark {} as active immediately.",
-                 static_cast<void*>(active_lookup_.get()),
-                 static_cast<void*>(warming_lookup_.get()),
-                 static_cast<void*>(this));
-      warmed(lookup);
-    };
-    return res;
-  }
+  std::unique_ptr<FilterChainLookup> createFilterChainLookup();
 
-  void warmed(FilterChainLookup* warming_lookup) {
-    if (warming_lookup != warming_lookup_.get()) {
-      ENVOY_LOG(error, "transforming warmed up lookup {} but is replaced by newer warming one {}. ",
-                static_cast<void*>(warming_lookup), static_cast<void*>(warming_lookup_.get()));
-      return;
-    } else {
-      ENVOY_LOG(info, "updating to warmed up lookup {}", static_cast<void*>(warming_lookup));
-      std::swap(warming_lookup_, active_lookup_);
-    }
-  }
+
+  void warmed(FilterChainLookup* warming_lookup);
 
   // The invariant:
   // Once the active one is ready, there is always an active one until shutdown.
@@ -266,6 +211,10 @@ private:
   // one, the warming one could assume the active one never changed durign the warm up.
   std::shared_ptr<FilterChainLookup> active_lookup_;
   std::shared_ptr<FilterChainLookup> warming_lookup_;
+
+  Init::Manager&  init_manager_;// local_init_manager{"filter_chain_init_manager"};
+  Init::TargetImpl init_target_{"filter_chain_manager",
+                                []() { ENVOY_LOG(trace, "initializing filter chain manager"); }};
 
   // The address should never change during the lifetime of the filter chain manager.
   // TODO(silentdai): declare const

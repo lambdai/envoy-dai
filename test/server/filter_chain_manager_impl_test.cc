@@ -7,6 +7,7 @@
 #include "envoy/admin/v2alpha/config_dump.pb.h"
 #include "envoy/registry/registry.h"
 #include "envoy/server/filter_config.h"
+#include "envoy/init/manager.h"
 
 #include "common/api/os_sys_calls_impl.h"
 #include "common/config/metadata.h"
@@ -68,6 +69,17 @@ public:
         TestEnvironment::substitute(filter_chain_yaml_peer, Network::Address::IpVersion::v4),
         filter_chain_template_peer_);
     Envoy::Logger::Registry::setLogLevel(static_cast<spdlog::level::level_enum>(0));    
+
+    init_manager_ = std::make_unique<Init::ManagerImpl>("filter_chain_manager_init_manager_in_test");
+
+    filter_chain_manager_ = std::make_unique<FilterChainManagerImpl>(
+      *init_manager_,
+      std::make_shared<Network::Address::Ipv4Instance>("127.0.0.1", 1234),
+      ProtobufMessage::getNullValidationVisitor());
+    init_watcher_ = std::make_unique<Init::WatcherImpl>("filter_chain_manager_watcher", []() {
+      ENVOY_LOG_MISC(warn, "filter chain manager initialized.");
+    });
+    init_manager_->initialize(*init_watcher_);
   }
 
   // Helper for test
@@ -100,11 +112,11 @@ public:
       remote_address_ = Network::Utility::parseInternetAddress(source_address, source_port);
     }
     ON_CALL(*mock_socket, remoteAddress()).WillByDefault(ReturnRef(remote_address_));
-    return filter_chain_manager_.findFilterChain(*mock_socket);
+    return filter_chain_manager_->findFilterChain(*mock_socket);
   }
 
   void addSingleFilterChainHelper(const envoy::api::v2::listener::FilterChain& filter_chain) {
-    filter_chain_manager_.addFilterChain(
+    filter_chain_manager_->addFilterChain(
         std::vector<const envoy::api::v2::listener::FilterChain*>{&filter_chain},
         filter_chain_factory_builder_);
   }
@@ -142,11 +154,10 @@ public:
   envoy::api::v2::listener::FilterChain filter_chain_template_;
   envoy::api::v2::listener::FilterChain filter_chain_template_peer_;
   MockFilterChainFactoryBuilder filter_chain_factory_builder_;
-
+  std::unique_ptr<Init::Manager> init_manager_;
+  std::unique_ptr<Init::Watcher> init_watcher_;
   // Test target
-  FilterChainManagerImpl filter_chain_manager_{
-      std::make_shared<Network::Address::Ipv4Instance>("127.0.0.1", 1234),
-      ProtobufMessage::getNullValidationVisitor()};
+  std::unique_ptr<FilterChainManagerImpl> filter_chain_manager_;
 };
 
 TEST_F(FilterChainManagerImplTest, FilterChainMatchNothing) {

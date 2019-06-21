@@ -187,7 +187,6 @@ ListenerImpl::ListenerImpl(const envoy::api::v2::Listener& config, const std::st
                            ListenerManagerImpl& parent, const std::string& name, bool modifiable,
                            bool workers_started, uint64_t hash)
     : parent_(parent), address_(Network::Address::resolveProtoAddress(config.address())),
-      filter_chain_manager_(address_, parent_.server_.messageValidationVisitor()),
       socket_type_(Network::Utility::protobufAddressSocketType(config.address())),
       global_scope_(parent_.server_.stats().createScope("")),
       listener_scope_(
@@ -200,6 +199,7 @@ ListenerImpl::ListenerImpl(const envoy::api::v2::Listener& config, const std::st
       listener_tag_(parent_.factory_.nextListenerTag()), name_(name), modifiable_(modifiable),
       workers_started_(workers_started), hash_(hash),
       dynamic_init_manager_(fmt::format("Listener {}", name)),
+      filter_chain_manager_(getInitManager(), address_, parent_.server_.messageValidationVisitor()),
       init_watcher_(std::make_unique<Init::WatcherImpl>(
           "ListenerImpl", [this] { parent_.onListenerWarmed(*this); })),
       local_drain_manager_(parent.factory_.createDrainManager(config.drain_type())),
@@ -382,12 +382,8 @@ void ListenerImpl::initialize() {
 }
 
 Init::Manager& ListenerImpl::initManager() {
-  // See initialize() for why we choose different init managers to return.
-  if (workers_started_) {
-    return dynamic_init_manager_;
-  } else {
-    return parent_.server_.initManager();
-  }
+  // delegate to non-virtual function
+  return getInitManager();
 }
 
 void ListenerImpl::setSocket(const Network::SocketSharedPtr& socket) {
