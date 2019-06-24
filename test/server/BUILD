@@ -4,6 +4,7 @@ load(
     "//bazel:envoy_build_system.bzl",
     "envoy_cc_fuzz_test",
     "envoy_cc_test",
+    "envoy_cc_test_binary",
     "envoy_cc_test_library",
     "envoy_package",
     "envoy_select_hot_restart",
@@ -155,6 +156,32 @@ envoy_cc_test(
         "//test/test_common:environment_lib",
         "//test/test_common:utility_lib",
         "@envoy_api//envoy/api/v2:lds_cc",
+    ],
+)
+
+envoy_cc_test_binary(
+    name = "lds_speed_test",
+    srcs = ["lds_speed_test.cc"],
+    data = [
+        "//test/config/integration/certs",
+    ],
+    external_deps = [
+        "benchmark",
+        "googletest",
+    ],
+    deps = [
+        "//source/common/protobuf:utility_lib",
+        "//source/server:lds_api_lib",
+        "//test/mocks/config:config_mocks",
+        "//test/mocks/protobuf:protobuf_mocks",
+        "//test/mocks/server:server_mocks",
+        "//test/test_common:environment_lib",
+        "//test/test_common:utility_lib",
+        "@envoy_api//envoy/api/v2:lds_cc",
+        "//test/server:utility_lib",
+        "//source/common/config:filter_json_lib",
+        # registry only
+        "//source/extensions/filters/network/http_connection_manager:config",
     ],
 )
 
