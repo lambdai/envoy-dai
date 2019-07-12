@@ -121,6 +121,16 @@ private:
     Network::UdpListenerReadFilterPtr read_filter_;
   };
 
+  // The abstraction of a filter chain. It owns the connections and belongs to a ActiveTcpListener.
+  struct ConnectionGroup {
+    explicit ConnectionGroup(ActiveTcpListener& listener) noexcept : listener_(listener) {}
+    explicit ConnectionGroup(ConnectionGroup&&) noexcept = default;
+
+    ~ConnectionGroup() = default;
+    ActiveTcpListener& listener_;
+    std::list<ActiveConnectionPtr> connections_;
+  };
+
   /**
    * Wrapper for an active tcp listener owned by this handler.
    */
@@ -135,7 +145,17 @@ private:
     // Network::ListenerCallbacks
     void onAccept(Network::ConnectionSocketPtr&& socket,
                   bool hand_off_restored_destination_connections) override;
-    void onNewConnection(Network::ConnectionPtr&& new_connection) override;
+
+    // TODO(silentdai): replace onNewConnection
+    void onNewConnection(Network::ConnectionPtr&& new_connection) override {
+      UNREFERENCED_PARAMETER(new_connection);
+    }
+    void onNewConnection(ConnectionGroup& group, Network::ConnectionPtr&& new_connection);
+
+    // TODO(silentdai): find the group mapping to the filter chain.
+    // The implementation must guarantee that the exact group should be found if the filter chain
+    // survives between filter chain config update(or listener update at this moment).
+    ConnectionGroup& findGroupByFilterChain(const Network::FilterChain* filter_chain);
 
     /**
      * Remove and destroy an active connection.
@@ -149,7 +169,7 @@ private:
     void newConnection(Network::ConnectionSocketPtr&& socket);
 
     std::list<ActiveSocketPtr> sockets_;
-    std::list<ActiveConnectionPtr> connections_;
+    std::unordered_map<const Network::FilterChain*, ConnectionGroup> connection_groups_;
   };
 
   /**
@@ -158,7 +178,7 @@ private:
   struct ActiveConnection : LinkedObject<ActiveConnection>,
                             public Event::DeferredDeletable,
                             public Network::ConnectionCallbacks {
-    ActiveConnection(ActiveTcpListener& listener, Network::ConnectionPtr&& new_connection,
+    ActiveConnection(ConnectionGroup& group, Network::ConnectionPtr&& new_connection,
                      TimeSource& time_system);
     ~ActiveConnection() override;
 
@@ -167,13 +187,13 @@ private:
       // Any event leads to destruction of the connection.
       if (event == Network::ConnectionEvent::LocalClose ||
           event == Network::ConnectionEvent::RemoteClose) {
-        listener_.removeConnection(*this);
+        group_.listener_.removeConnection(*this);
       }
     }
     void onAboveWriteBufferHighWatermark() override {}
     void onBelowWriteBufferLowWatermark() override {}
 
-    ActiveTcpListener& listener_;
+    ConnectionGroup& group_;
     Network::ConnectionPtr connection_;
     Stats::TimespanPtr conn_length_;
   };
