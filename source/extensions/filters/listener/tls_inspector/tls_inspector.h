@@ -41,7 +41,8 @@ struct TlsInspectorStats {
  */
 class Config {
 public:
-  Config(Stats::Scope& scope, std::chrono::milliseconds fallback_timeout,
+  Config(Stats::Scope& scope,
+         std::chrono::milliseconds fallback_timeout = std::chrono::milliseconds::max(),
          uint32_t max_client_hello_size = TLS_MAX_CLIENT_HELLO);
 
   const TlsInspectorStats& stats() const { return stats_; }

@@ -1,5 +1,7 @@
 #include <string>
 
+#include "envoy/config/filter/listener/tls_inspector/v2alpha1/tls_inspector.pb.h"
+#include "envoy/config/filter/listener/tls_inspector/v2alpha1/tls_inspector.pb.validate.h"
 #include "envoy/registry/registry.h"
 #include "envoy/server/filter_config.h"
 
@@ -23,7 +25,12 @@ public:
     auto proto_config = MessageUtil::downcastAndValidate<
         const envoy::config::filter::listener::tls_inspector::v2alpha1::TlsInspector&>(message);
 
-    auto config = std::make_shared<Config>(context.scope(), );
+    std::chrono::milliseconds fallback_timeout = std::chrono::milliseconds::max();
+    if (proto_config.has_fallback_timeout()) {
+      fallback_timeout = std::chrono::milliseconds(
+          DurationUtil::durationToMilliseconds(proto_config.fallback_timeout()));
+    }
+    auto config = std::make_shared<Config>(context.scope(), fallback_timeout);
     return [config = std::move(config)](Network::ListenerFilterManager& filter_manager) -> void {
       filter_manager.addAcceptFilter(std::make_unique<Filter>(config));
     };
