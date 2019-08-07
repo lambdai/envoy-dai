@@ -67,9 +67,12 @@ Filter::Filter(const ConfigSharedPtr config) : config_(config), ssl_(config_->ne
 
   SSL_set_app_data(ssl_.get(), this);
   SSL_set_accept_state(ssl_.get());
+  timer_ = cb.dispatcher().createTimer([this]() -> void { onFallbackTimeout(); });	
+  timer_->enableTimer(config_->fallbackTimeout());	
 }
 
-Network::FilterStatus Filter::onAccept(Network::ListenerFilterCallbacks& cb) {
+// Always driven by filer chain owner. 
+Network::FlterStatus Filter::onAccept(Network::ListenerFilterCallbacks& cb) {
   ENVOY_LOG(debug, "tls inspector: new connection accepted");
   Network::ConnectionSocket& socket = cb.socket();
   ASSERT(file_event_ == nullptr);
@@ -123,6 +126,43 @@ void Filter::onServername(absl::string_view name) {
   clienthello_success_ = true;
 }
 
+// The parser expecting more data to determine TLS. 
+void Filter::maybeGiveUp() {
+    if (isTimeout_) {
+      // Fallback timeout and there is no data. Stop sniffing and as if it's plain text. 
+      done(true);
+    } else {
+      return;
+    }
+}
+
+void Filter::onFallbackTimeout() {
+  // The filter may not be scheduled yet. Set the flag so that future onAccept could learns
+  // it is timed out already.
+  isTimeout_ = true;
+  // Timeout happens in 3 cases
+  // 1. Before onAccept
+  // 2. Actively onAccept
+  // 3. After the filter is done 
+  switch phase {
+    case BEFORE_ACTIVE:
+      // Do nothing since it's another filter's responsibility to drive the filter.
+      ENVOY_LOG(debug, "tls inspector timeout");
+      break;
+    case AFTER_ACTIVE:
+      ENVOY_LOG(error, "tls inspector timeout callback is stale");
+      break;  
+    case IN_ACTIVE:
+      // read attempt
+      onRead();
+      break;
+    default:
+      ENVOY_LOG(error, "tls inspector should never reach here");
+      break;
+  }
+}
+
+// May be driven by onAccept or onFallbackTimeout
 void Filter::onRead() {
   // This receive code is somewhat complicated, because it must be done as a MSG_PEEK because
   // there is no way for a listener-filter to pass payload data to the ConnectionImpl and filters
@@ -142,6 +182,7 @@ void Filter::onRead() {
   ENVOY_LOG(trace, "tls inspector: recv: {}", result.rc_);
 
   if (result.rc_ == -1 && result.errno_ == EAGAIN) {
+    maybeGiveUp();
     return;
   } else if (result.rc_ < 0) {
     config_->stats().read_error_.inc();
@@ -155,17 +196,23 @@ void Filter::onRead() {
     const uint8_t* data = buf_ + read_;
     const size_t len = result.rc_ - read_;
     read_ = result.rc_;
-    parseClientHello(data, len);
+    if (parseClientHello(data, len) == DONE) {
+      return;
+    }
   }
+  //
+  maybeGiveUp();
 }
 
 void Filter::done(bool success) {
   ENVOY_LOG(trace, "tls inspector: done: {}", success);
   file_event_.reset();
+  timer.disableTimer();
+  timer_.reset();
   cb_->continueFilterChain(success);
 }
 
-void Filter::parseClientHello(const void* data, size_t len) {
+bool Filter::parseClientHello(const void* data, size_t len) {
   // Ownership is passed to ssl_ in SSL_set_bio()
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, len));
 
@@ -187,6 +234,8 @@ void Filter::parseClientHello(const void* data, size_t len) {
       // indicate failure.
       config_->stats().client_hello_too_large_.inc();
       done(false);
+    } else {
+      return EXPECTING_MORE_DATA;
     }
     break;
   case SSL_ERROR_SSL:
@@ -207,6 +256,7 @@ void Filter::parseClientHello(const void* data, size_t len) {
     done(false);
     break;
   }
+  return WONT_PARSE;
 }
 
 } // namespace TlsInspector

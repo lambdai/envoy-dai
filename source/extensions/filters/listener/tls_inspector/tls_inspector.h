@@ -77,6 +77,7 @@ private:
   void done(bool success);
   void onALPN(const unsigned char* data, unsigned int len);
   void onServername(absl::string_view name);
+  void onFallbackTimeout();
 
   ConfigSharedPtr config_;
   Network::ListenerFilterCallbacks* cb_;
@@ -86,6 +87,7 @@ private:
   uint64_t read_{0};
   bool alpn_found_{false};
   bool clienthello_success_{false};
+  bool isTimeout_{false};
 
   static thread_local uint8_t buf_[Config::TLS_MAX_CLIENT_HELLO];
 
