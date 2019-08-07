@@ -22,7 +22,7 @@ public:
   Network::ListenerFilterFactoryCb
   createFilterFactoryFromProto(const Protobuf::Message& message,
                                Server::Configuration::ListenerFactoryContext& context) override {
-    auto proto_config = MessageUtil::downcastAndValidate<
+    const auto& proto_config = MessageUtil::downcastAndValidate<
         const envoy::config::filter::listener::tls_inspector::v2alpha1::TlsInspector&>(message);
 
     std::chrono::milliseconds fallback_timeout = std::chrono::milliseconds::max();
