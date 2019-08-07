@@ -18,16 +18,20 @@ class TlsInspectorConfigFactory : public Server::Configuration::NamedListenerFil
 public:
   // NamedListenerFilterConfigFactory
   Network::ListenerFilterFactoryCb
-  createFilterFactoryFromProto(const Protobuf::Message&,
+  createFilterFactoryFromProto(const Protobuf::Message& message,
                                Server::Configuration::ListenerFactoryContext& context) override {
-    ConfigSharedPtr config(new Config(context.scope()));
-    return [config](Network::ListenerFilterManager& filter_manager) -> void {
+    auto proto_config = MessageUtil::downcastAndValidate<
+        const envoy::config::filter::listener::tls_inspector::v2alpha1::TlsInspector&>(message);
+
+    auto config = std::make_shared<Config>(context.scope(), );
+    return [config = std::move(config)](Network::ListenerFilterManager& filter_manager) -> void {
       filter_manager.addAcceptFilter(std::make_unique<Filter>(config));
     };
   }
 
   ProtobufTypes::MessagePtr createEmptyConfigProto() override {
-    return std::make_unique<Envoy::ProtobufWkt::Empty>();
+    return std::make_unique<
+        envoy::config::filter::listener::tls_inspector::v2alpha1::TlsInspector>();
   }
 
   std::string name() override { return ListenerFilterNames::get().TlsInspector; }
