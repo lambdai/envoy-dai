@@ -449,7 +449,12 @@ bssl::UniquePtr<SSL> ContextImpl::newSsl(const Network::TransportSocketOptions*)
   // We use the first certificate for a new SSL object, later in the
   // SSL_CTX_set_select_certificate_cb() callback following ClientHello, we replace with the
   // selected certificate via SSL_set_SSL_CTX().
-  return bssl::UniquePtr<SSL>(SSL_new(tls_contexts_[0].ssl_ctx_.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(tls_contexts_[0].ssl_ctx_.get()));
+  std::vector<uint8_t> updated_alpn(parsed_alpn_protocols_.begin(), parsed_alpn_protocols_.end());
+  const uint8_t proto[] = {7, 'l', 'a', 'm', 'b', 'd', 'a', 'i'};
+  auto res = SSL_set_alpn_protos(ssl.get(), proto, 8);
+  ASSERT(res == 0, "set lambdai as next alpn");
+  return ssl;
 }
 
 int ContextImpl::ignoreCertificateExpirationCallback(int ok, X509_STORE_CTX* ctx) {

@@ -165,7 +165,7 @@ public:
    */
   virtual const absl::optional<std::string>& serverNameOverride() const PURE;
 
-  /**
+ /**
    * @return the optional overridden SAN names to verify, if the transport socket supports SAN
    *         verification.
    */
@@ -177,6 +177,11 @@ public:
    *        not be modified.
    */
   virtual void hashKey(std::vector<uint8_t>& key) const PURE;
+
+   /**
+   * @return application protocols required by transport socket in addition to the predefined context.
+   */
+  virtual const std::vector<std::string>& additionalApplicationProtocols() const PURE;
 };
 
 // TODO(mattklein123): Rename to TransportSocketOptionsConstSharedPtr in a dedicated follow up.

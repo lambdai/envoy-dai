@@ -21,11 +21,18 @@ public:
   const std::vector<std::string>& verifySubjectAltNameListOverride() const override {
     return override_verify_san_list_;
   }
+  const std::vector<std::string>& additionalApplicationProtocols() const override {
+    return additional_application_protocols_;
+  }
   void hashKey(std::vector<uint8_t>& key) const override;
 
 private:
   const absl::optional<std::string> override_server_name_;
   const std::vector<std::string> override_verify_san_list_;
+  const std::vector<std::string> additional_application_protocols_;
+   
+  
+  
 };
 
 } // namespace Network
