@@ -604,5 +604,10 @@ std::unique_ptr<Network::FilterChain> ListenerFilterChainFactoryBuilder::buildFi
       parent_.parent_.factory_.createNetworkFilterFactoryList(filter_chain.filters(), parent_));
 }
 
+ListenerManagerImpl::DrainingListener::DrainingListener(ListenerImplPtr&& listener,
+                                                        uint64_t workers_pending_removal)
+    : listener_(std::move(listener)), workers_pending_removal_(workers_pending_removal) {}
+ListenerManagerImpl::DrainingListener::~DrainingListener() = default;
+
 } // namespace Server
 } // namespace Envoy

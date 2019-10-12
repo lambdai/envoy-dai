@@ -13,6 +13,7 @@
 #include "common/protobuf/utility.h"
 #include "common/singleton/manager_impl.h"
 
+#include "server/listener_impl.h"
 #include "server/ssl_context_manager.h"
 
 namespace Envoy {

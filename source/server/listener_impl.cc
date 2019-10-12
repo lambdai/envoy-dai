@@ -289,6 +289,8 @@ Init::Manager& ListenerImpl::initManager() {
   }
 }
 
+FilterChainManagerImpl& ListenerImpl::filterChainManagerImpl() { return filter_chain_manager_; }
+
 void ListenerImpl::setSocket(const Network::SocketSharedPtr& socket) {
   ASSERT(!socket_);
   socket_ = socket;

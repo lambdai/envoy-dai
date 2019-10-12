@@ -79,7 +79,7 @@ public:
   const std::string& versionInfo() { return version_info_; }
 
   // Network::ListenerConfig
-  Network::FilterChainManager& filterChainManager() override { return filter_chain_manager_; }
+  Network::FilterChainManager& filterChainManager() override { return filterChainManagerImpl(); }
   Network::FilterChainFactory& filterChainFactory() override { return *this; }
   Network::Socket& socket() override { return *socket_; }
   const Network::Socket& socket() const override { return *socket_; }
@@ -161,7 +161,11 @@ private:
 
   ListenerManagerImpl& parent_;
   Network::Address::InstanceConstSharedPtr address_;
+
+  // TODO: replace filter_chain_manager
+  FilterChainManagerImpl& filterChainManagerImpl();
   FilterChainManagerImpl filter_chain_manager_;
+  std::unique_ptr<FilterChainManagerProvider> filter_chain_manager_provider_;
 
   Network::Address::SocketType socket_type_;
   Network::SocketSharedPtr socket_;
@@ -194,7 +198,6 @@ private:
   const bool continue_on_listener_filters_timeout_;
   Network::ActiveUdpListenerFactoryPtr udp_listener_factory_;
   Network::ConnectionBalancerPtr connection_balancer_;
-  std::unique_ptr<FilterChainManagerProvider> filter_chain_manager_provider_;
 
   // to access ListenerManagerImpl::factory_.
   friend class ListenerFilterChainFactoryBuilder;
