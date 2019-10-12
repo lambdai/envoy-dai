@@ -13,7 +13,6 @@
 
 #include "server/filter_chain_manager_impl.h"
 #include "server/lds_api.h"
-#include "server/listener_impl.h"
 
 namespace Envoy {
 namespace Server {

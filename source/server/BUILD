@@ -257,6 +257,20 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "filter_chain_manager_provider_impl",
+    srcs = [
+        "filter_chain_manager_provider_impl.cc",
+    ],
+    hdrs = [
+        "filter_chain_manager_provider.h",
+        "filter_chain_manager_provider_impl.h",
+    ],
+    deps = [
+        ":filter_chain_manager_lib",
+    ],
+)
+
+envoy_cc_library(
     name = "listener_lib",
     srcs = [
         "listener_impl.cc",
@@ -265,6 +279,7 @@ envoy_cc_library(
         "listener_impl.h",
     ],
     deps = [
+        ":filter_chain_manager_provider_impl",
         ":listener_manager_impl",
         "//source/common/network:connection_balancer_lib",
     ],

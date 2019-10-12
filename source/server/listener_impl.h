@@ -18,6 +18,7 @@ namespace Envoy {
 namespace Server {
 
 class ListenerManagerImpl;
+class FilterChainManagerProvider;
 
 // TODO(mattklein123): Consider getting rid of pre-worker start and post-worker start code by
 //                     initializing all listeners after workers are started.
@@ -176,8 +177,7 @@ private:
   const uint64_t hash_;
   ProtobufMessage::ValidationVisitor& validation_visitor_;
 
-  // This init manager is populated with targets from the filter chain factories, namely
-  // RdsRouteConfigSubscription::init_target_, so the listener can wait for route configs.
+  // This init manager is populated with targets from the filter chain factories.
   Init::ManagerImpl dynamic_init_manager_;
 
   // This init watcher, if available, notifies the "parent" listener manager when listener
@@ -194,6 +194,7 @@ private:
   const bool continue_on_listener_filters_timeout_;
   Network::ActiveUdpListenerFactoryPtr udp_listener_factory_;
   Network::ConnectionBalancerPtr connection_balancer_;
+  std::unique_ptr<FilterChainManagerProvider> filter_chain_manager_provider_;
 
   // to access ListenerManagerImpl::factory_.
   friend class ListenerFilterChainFactoryBuilder;
