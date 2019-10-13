@@ -57,11 +57,11 @@ TEST_P(ListenerImplDeathTest, ErrorCallback) {
   EXPECT_DEATH_LOG_TO_STDERR(errorCallbackTest(GetParam()), ".*listener accept failure.*");
 }
 
-class TestListenerImpl : public ListenerImpl {
+class TestListenerImpl : public TcpListenerImpl {
 public:
   TestListenerImpl(Event::DispatcherImpl& dispatcher, Socket& socket, ListenerCallbacks& cb,
                    bool bind_to_port)
-      : ListenerImpl(dispatcher, socket, cb, bind_to_port) {}
+      : TcpListenerImpl(dispatcher, socket, cb, bind_to_port) {}
 
   MOCK_METHOD1(getLocalAddress, Address::InstanceConstSharedPtr(int fd));
 };

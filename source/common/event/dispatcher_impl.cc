@@ -135,7 +135,7 @@ Network::ListenerPtr DispatcherImpl::createListener(Network::Socket& socket,
                                                     Network::ListenerCallbacks& cb,
                                                     bool bind_to_port) {
   ASSERT(isThreadSafe());
-  return std::make_unique<Network::ListenerImpl>(*this, socket, cb, bind_to_port);
+  return std::make_unique<Network::TcpListenerImpl>(*this, socket, cb, bind_to_port);
 }
 
 Network::UdpListenerPtr DispatcherImpl::createUdpListener(Network::Socket& socket,

@@ -7,12 +7,11 @@ namespace Network {
 
 /**
  * libevent implementation of Network::Listener for TCP.
- * TODO(conqerAtapple): Consider renaming the class to `TcpListenerImpl`.
  */
-class ListenerImpl : public BaseListenerImpl {
+class TcpListenerImpl : public BaseListenerImpl {
 public:
-  ListenerImpl(Event::DispatcherImpl& dispatcher, Socket& socket, ListenerCallbacks& cb,
-               bool bind_to_port);
+  TcpListenerImpl(Event::DispatcherImpl& dispatcher, Socket& socket, ListenerCallbacks& cb,
+                  bool bind_to_port);
 
   void disable() override;
   void enable() override;

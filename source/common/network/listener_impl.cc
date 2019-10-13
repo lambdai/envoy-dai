@@ -17,9 +17,9 @@
 namespace Envoy {
 namespace Network {
 
-void ListenerImpl::listenCallback(evconnlistener*, evutil_socket_t fd, sockaddr* remote_addr,
-                                  int remote_addr_len, void* arg) {
-  ListenerImpl* listener = static_cast<ListenerImpl*>(arg);
+void TcpListenerImpl::listenCallback(evconnlistener*, evutil_socket_t fd, sockaddr* remote_addr,
+                                     int remote_addr_len, void* arg) {
+  TcpListenerImpl* listener = static_cast<TcpListenerImpl*>(arg);
 
   // Create the IoSocketHandleImpl for the fd here.
   IoHandlePtr io_handle = std::make_unique<IoSocketHandleImpl>(fd);
@@ -47,7 +47,7 @@ void ListenerImpl::listenCallback(evconnlistener*, evutil_socket_t fd, sockaddr*
       std::make_unique<AcceptedSocketImpl>(std::move(io_handle), local_address, remote_address));
 }
 
-void ListenerImpl::setupServerSocket(Event::DispatcherImpl& dispatcher, Socket& socket) {
+void TcpListenerImpl::setupServerSocket(Event::DispatcherImpl& dispatcher, Socket& socket) {
   listener_.reset(
       evconnlistener_new(&dispatcher.base(), listenCallback, this, 0, -1, socket.ioHandle().fd()));
 
@@ -65,27 +65,27 @@ void ListenerImpl::setupServerSocket(Event::DispatcherImpl& dispatcher, Socket& 
   evconnlistener_set_error_cb(listener_.get(), errorCallback);
 }
 
-ListenerImpl::ListenerImpl(Event::DispatcherImpl& dispatcher, Socket& socket, ListenerCallbacks& cb,
-                           bool bind_to_port)
+TcpListenerImpl::TcpListenerImpl(Event::DispatcherImpl& dispatcher, Socket& socket,
+                                 ListenerCallbacks& cb, bool bind_to_port)
     : BaseListenerImpl(dispatcher, socket), cb_(cb), listener_(nullptr) {
   if (bind_to_port) {
     setupServerSocket(dispatcher, socket);
   }
 }
 
-void ListenerImpl::errorCallback(evconnlistener*, void*) {
+void TcpListenerImpl::errorCallback(evconnlistener*, void*) {
   // We should never get an error callback. This can happen if we run out of FDs or memory. In those
   // cases just crash.
   PANIC(fmt::format("listener accept failure: {}", strerror(errno)));
 }
 
-void ListenerImpl::enable() {
+void TcpListenerImpl::enable() {
   if (listener_.get()) {
     evconnlistener_enable(listener_.get());
   }
 }
 
-void ListenerImpl::disable() {
+void TcpListenerImpl::disable() {
   if (listener_.get()) {
     evconnlistener_disable(listener_.get());
   }
