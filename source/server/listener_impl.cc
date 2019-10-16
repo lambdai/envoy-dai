@@ -31,7 +31,7 @@ ListenerImpl::ListenerImpl(const envoy::api::v2::Listener& config, const std::st
                            bool workers_started, uint64_t hash,
                            ProtobufMessage::ValidationVisitor& validation_visitor)
     : parent_(parent), address_(Network::Address::resolveProtoAddress(config.address())),
-      filter_chain_manager_(address_),
+      filter_chain_manager_(std::make_shared<FilterChainManagerImpl>(address_)),
       socket_type_(Network::Utility::protobufAddressSocketType(config.address())),
       global_scope_(parent_.server_.stats().createScope("")),
       listener_scope_(
@@ -123,7 +123,7 @@ ListenerImpl::ListenerImpl(const envoy::api::v2::Listener& config, const std::st
       parent_.server_.threadLocal(), validation_visitor, parent_.server_.api());
   factory_context.setInitManager(initManager());
   ListenerFilterChainFactoryBuilder builder(*this, factory_context);
-  filter_chain_manager_.addFilterChain(config.filter_chains(), builder);
+  filter_chain_manager_->addFilterChain(config.filter_chains(), builder);
 
   if (socket_type_ == Network::Address::SocketType::Datagram) {
     return;
