@@ -351,6 +351,8 @@ public:
   virtual const FilterChain* findFilterChain(const ConnectionSocket& socket) const PURE;
 };
 
+using FilterChainManagerSharedPtr = std::shared_ptr<FilterChainManager>;
+
 /**
  * Callbacks used by individual UDP listener read filter instances to communicate with the filter
  * manager.

@@ -78,7 +78,10 @@ public:
   const std::string& versionInfo() { return version_info_; }
 
   // Network::ListenerConfig
-  Network::FilterChainManager& filterChainManager() override { return filter_chain_manager_; }
+  Network::FilterChainManager& filterChainManager() override { return *filter_chain_manager_; }
+  Network::FilterChainManagerSharedPtr sharedFilterChainManager() override {
+    return filter_chain_manager_;
+  }
   Network::FilterChainFactory& filterChainFactory() override { return *this; }
   Network::Socket& socket() override { return *socket_; }
   const Network::Socket& socket() const override { return *socket_; }
@@ -160,7 +163,7 @@ private:
 
   ListenerManagerImpl& parent_;
   Network::Address::InstanceConstSharedPtr address_;
-  FilterChainManagerImpl filter_chain_manager_;
+  std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
 
   Network::Address::SocketType socket_type_;
   Network::SocketSharedPtr socket_;
