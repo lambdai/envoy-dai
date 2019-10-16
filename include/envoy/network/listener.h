@@ -30,6 +30,12 @@ public:
   virtual FilterChainManager& filterChainManager() PURE;
 
   /**
+   * @return FilterChainManagerSharedPtr the factory for adding and searching through configured
+   *         filter chains.
+   */
+  virtual FilterChainManagerSharedPtr sharedFilterChainManager() PURE;
+
+  /**
    * @return FilterChainFactory& the factory for setting up the filter chain on a new
    *         connection.
    */

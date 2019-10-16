@@ -312,6 +312,12 @@ private:
 
     // Network::ListenerConfig
     Network::FilterChainManager& filterChainManager() override { return parent_; }
+    // TODO: replace this if the interface is agreed
+    Network::FilterChainManagerSharedPtr sharedFilterChainManager() override {
+      return Network::FilterChainManagerSharedPtr(&parent_,
+                                                  // A fake deleter
+                                                  [](auto) {});
+    }
     Network::FilterChainFactory& filterChainFactory() override { return parent_; }
     Network::Socket& socket() override { return parent_.mutable_socket(); }
     const Network::Socket& socket() const override { return parent_.mutable_socket(); }

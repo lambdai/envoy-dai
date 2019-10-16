@@ -111,7 +111,7 @@ ConnectionHandlerImpl::ActiveTcpListener::ActiveTcpListener(ConnectionHandlerImp
                                                             Network::ListenerPtr&& listener,
                                                             Network::ListenerConfig& config)
     : ConnectionHandlerImpl::ActiveListenerImplBase(parent, std::move(listener), config),
-      parent_(parent) {
+      parent_(parent), active_filter_chain_manager_(config.sharedFilterChainManager()) {
   config.connectionBalancer().registerHandler(*this);
 }
 
@@ -267,7 +267,7 @@ void ConnectionHandlerImpl::ActiveTcpSocket::newConnection() {
           Extensions::TransportSockets::TransportProtocolNames::get().RawBuffer);
     }
     // Create a new connection on this listener.
-    listener_.newConnection(std::move(socket_));
+    listener_.newConnection(*this);
   }
 }
 
@@ -303,21 +303,24 @@ void ConnectionHandlerImpl::ActiveTcpListener::onAcceptWorker(
 }
 
 void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
-    Network::ConnectionSocketPtr&& socket) {
+    ConnectionHandlerImpl::ActiveTcpSocket& tcp_socket) {
   // Find matching filter chain.
-  const auto filter_chain = config_.filterChainManager().findFilterChain(*socket);
+  // TODO(socket)
+  const auto filter_chain =
+      tcp_socket.snapped_filter_chain_manager_->findFilterChain(*tcp_socket.socket_);
   if (filter_chain == nullptr) {
     ENVOY_LOG(debug, "closing connection: no matching filter chain found");
     stats_.no_filter_chain_match_.inc();
-    socket->close();
+    tcp_socket.socket_->close();
     return;
   }
 
   auto transport_socket = filter_chain->transportSocketFactory().createTransportSocket(nullptr);
-  ActiveTcpConnectionPtr active_connection(new ActiveTcpConnection(
-      *this,
-      parent_.dispatcher_.createServerConnection(std::move(socket), std::move(transport_socket)),
-      parent_.dispatcher_.timeSource()));
+  ActiveTcpConnectionPtr active_connection(
+      new ActiveTcpConnection(*this,
+                              parent_.dispatcher_.createServerConnection(
+                                  std::move(tcp_socket.socket_), std::move(transport_socket)),
+                              parent_.dispatcher_.timeSource()));
   active_connection->connection_->setBufferLimits(config_.perConnectionBufferLimitBytes());
 
   const bool empty_filter_chain = !config_.filterChainFactory().createNetworkFilterChain(

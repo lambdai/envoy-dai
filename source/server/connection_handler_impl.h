@@ -137,12 +137,18 @@ private:
     /**
      * Create a new connection from a socket accepted by the listener.
      */
-    void newConnection(Network::ConnectionSocketPtr&& socket);
+    void newConnection(ActiveTcpSocket& socket);
+
+    void
+    updateFilterChainManager(const Network::FilterChainManagerSharedPtr& new_filter_chain_manager);
 
     ConnectionHandlerImpl& parent_;
+    // Sockets going through listener filter chain
     std::list<ActiveTcpSocketPtr> sockets_;
+    // Connections completed listener filter chain and currently going through network filter chain
     std::list<ActiveTcpConnectionPtr> connections_;
-
+    // The filter chain manager which should serve the new connections.
+    Network::FilterChainManagerSharedPtr active_filter_chain_manager_;
     // The number of connections currently active on this listener. This is typically used for
     // connection balancing across per-handler listeners.
     std::atomic<uint64_t> num_listener_connections_{};
@@ -185,7 +191,8 @@ private:
                     bool hand_off_restored_destination_connections)
         : listener_(listener), socket_(std::move(socket)),
           hand_off_restored_destination_connections_(hand_off_restored_destination_connections),
-          iter_(accept_filters_.end()) {
+          iter_(accept_filters_.end()),
+          snapped_filter_chain_manager_(listener.active_filter_chain_manager_) {
       listener_.stats_.downstream_pre_cx_active_.inc();
     }
     ~ActiveTcpSocket() override {
@@ -224,6 +231,7 @@ private:
     const bool hand_off_restored_destination_connections_;
     std::list<Network::ListenerFilterPtr> accept_filters_;
     std::list<Network::ListenerFilterPtr>::iterator iter_;
+    Network::FilterChainManagerSharedPtr snapped_filter_chain_manager_;
     Event::TimerPtr timer_;
   };
 
