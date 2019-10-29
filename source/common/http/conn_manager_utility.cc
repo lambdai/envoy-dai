@@ -58,6 +58,10 @@ Network::Address::InstanceConstSharedPtr ConnectionManagerUtility::mutateRequest
     HeaderMap& request_headers, Network::Connection& connection, ConnectionManagerConfig& config,
     const Router::Config& route_config, Runtime::RandomGenerator& random,
     const LocalInfo::LocalInfo& local_info) {
+  ENVOY_LOG_MISC(info, "lambdai: request header before mutate : {}", request_headers.ForwardedProto() == null ? "no xfp" : *request_headers.ForwardedProto());
+  Cleanup dump_mu([&request_headers]() {
+    ENVOY_LOG_MISC(info, "lambdai: request header after mutate : {}", request_headers.ForwardedProto() == null ? "no xfp" : *request_headers.ForwardedProto());
+  });
   // If this is a Upgrade request, do not remove the Connection and Upgrade headers,
   // as we forward them verbatim to the upstream hosts.
   if (Utility::isUpgrade(request_headers)) {
