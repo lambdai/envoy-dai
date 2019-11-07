@@ -82,6 +82,9 @@ public:
     const Network::ActiveUdpListenerFactory* udpListenerFactory() override {
       return udp_listener_factory_.get();
     }
+    envoy::api::v2::core::TrafficDirection direction() const override {
+      return envoy::api::v2::core::TrafficDirection::UNSPECIFIED;
+    }
     Network::ConnectionBalancer& connectionBalancer() override { return *connection_balancer_; }
 
     ConnectionHandlerTest& parent_;
@@ -851,6 +854,32 @@ TEST_F(ConnectionHandlerTest, UdpListenerNoFilterThrowsException) {
         e.what(),
         HasSubstr("Cannot create listener as no read filter registered for the udp listener"));
   }
+}
+
+TEST_F(ConnectionHandlerTest, ActiveTcpSocketDestroyAcceptFilters) {
+  Network::MockListener* listener = new NiceMock<Network::MockListener>();
+  Network::ListenerCallbacks* listener_callbacks;
+  TestListener* test_listener = addListener(1, true, false, "test_listener");
+  EXPECT_CALL(dispatcher_, createListener_(_, _, _))
+      .WillOnce(
+          Invoke([&](Network::Socket&, Network::ListenerCallbacks& cb, bool) -> Network::Listener* {
+            listener_callbacks = &cb;
+            return listener;
+          }));
+  EXPECT_CALL(test_listener->socket_, localAddress());
+  handler_->addListener(*test_listener);
+
+  
+
+  ConnectionHandlerImpl connection_handler_impl;
+  ActiveTcpListener tcp_listener(connection_handler_impl, test_listener);
+  Network::MockConnectionSocket* connection = new NiceMock<Network::MockConnectionSocket>();
+  Network::ConnectionSocketPtr connection_socket(connection);
+  ActiveTcpSocket tcp_socket(tcp_listener, std::move(connection_socket), false);
+  EXPECT_CALL(dispatcher, createServerConnection(_, _)).InvokeThat([]() {
+    EXPECT_TRUE(tcp_socket.accept_filter_.empty());
+  });
+  tcp_socket.onTimeout();
 }
 
 } // namespace

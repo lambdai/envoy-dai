@@ -147,6 +147,8 @@ private:
     std::list<ActiveTcpSocketPtr> sockets_;
     // Connections completed listener filter chain and currently going through network filter chain
     std::list<ActiveTcpConnectionPtr> connections_;
+    // Connections completed listener filter chain and currently going through network filter chain
+    absl::flat_map<int64_t, std::list<ActiveTcpConnectionPtr>> tagged_connections_;
     // The filter chain manager which should serve the new connections.
     Network::FilterChainManagerSharedPtr active_filter_chain_manager_;
     // The number of connections currently active on this listener. This is typically used for
@@ -178,6 +180,7 @@ private:
     ActiveTcpListener& listener_;
     Network::ConnectionPtr connection_;
     Stats::TimespanPtr conn_length_;
+    int64_t tag_;
   };
 
   /**

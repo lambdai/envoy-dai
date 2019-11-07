@@ -306,8 +306,10 @@ void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
     ConnectionHandlerImpl::ActiveTcpSocket& tcp_socket) {
   // Find matching filter chain.
   // TODO(socket)
+
+  auto snapped_filter_chain_manager = active_filter_chain_manager_;
   const auto filter_chain =
-      tcp_socket.snapped_filter_chain_manager_->findFilterChain(*tcp_socket.socket_);
+      snapped_filter_chain_manager->findFilterChain(*tcp_socket.socket_);
   if (filter_chain == nullptr) {
     ENVOY_LOG(debug, "closing connection: no matching filter chain found");
     stats_.no_filter_chain_match_.inc();
