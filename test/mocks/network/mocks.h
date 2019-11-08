@@ -301,6 +301,7 @@ public:
   ~MockListenerConfig() override;
 
   MOCK_METHOD0(filterChainManager, FilterChainManager&());
+  MOCK_METHOD0(sharedFilterChainManager, FilterChainManagerSharedPtr());
   MOCK_METHOD0(filterChainFactory, FilterChainFactory&());
   MOCK_METHOD0(socket, Socket&());
   MOCK_CONST_METHOD0(socket, const Socket&());
