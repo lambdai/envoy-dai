@@ -83,7 +83,12 @@ void ConnectionHandlerImpl::enableListeners() {
 
 void ConnectionHandlerImpl::ActiveTcpListener::removeConnection(ActiveTcpConnection& connection) {
   ENVOY_CONN_LOG(debug, "adding to cleanup list", *connection.connection_);
-  ActiveTcpConnectionPtr removed = connection.removeFromList(connections_);
+  auto connections = tagged_connections_.find(connection.tag_);
+  ASSERT(connections != tagged_connections_.end());
+  ActiveTcpConnectionPtr removed = connection.removeFromList(connections->second);
+  if (connections->second.empty()) {
+    tagged_connections_.erase(connections);
+  }
   parent_.dispatcher_.deferredDelete(std::move(removed));
 }
 
@@ -125,8 +130,11 @@ ConnectionHandlerImpl::ActiveTcpListener::~ActiveTcpListener() {
     parent_.dispatcher_.deferredDelete(std::move(removed));
   }
 
-  while (!connections_.empty()) {
-    connections_.front()->connection_->close(Network::ConnectionCloseType::NoFlush);
+  for (auto& kv : tagged_connections_) {
+    auto& connections = kv.second;
+    while (!connections.empty()) {
+      connections.front()->connection_->close(Network::ConnectionCloseType::NoFlush);
+    }
   }
 
   parent_.dispatcher_.clearDeferredDeleteList();
@@ -305,11 +313,8 @@ void ConnectionHandlerImpl::ActiveTcpListener::onAcceptWorker(
 void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
     ConnectionHandlerImpl::ActiveTcpSocket& tcp_socket) {
   // Find matching filter chain.
-  // TODO(socket)
-
   auto snapped_filter_chain_manager = active_filter_chain_manager_;
-  const auto filter_chain =
-      snapped_filter_chain_manager->findFilterChain(*tcp_socket.socket_);
+  const auto filter_chain = snapped_filter_chain_manager->findFilterChain(*tcp_socket.socket_);
   if (filter_chain == nullptr) {
     ENVOY_LOG(debug, "closing connection: no matching filter chain found");
     stats_.no_filter_chain_match_.inc();
@@ -336,7 +341,8 @@ void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
   if (active_connection->connection_->state() != Network::Connection::State::Closed) {
     ENVOY_CONN_LOG(debug, "new connection", *active_connection->connection_);
     active_connection->connection_->addConnectionCallbacks(*active_connection);
-    active_connection->moveIntoList(std::move(active_connection), connections_);
+    auto& connections = tagged_connections_[active_connection->tag_];
+    active_connection->moveIntoList(std::move(active_connection), connections);
   }
 }
 

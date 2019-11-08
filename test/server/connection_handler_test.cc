@@ -869,8 +869,6 @@ TEST_F(ConnectionHandlerTest, ActiveTcpSocketDestroyAcceptFilters) {
   EXPECT_CALL(test_listener->socket_, localAddress());
   handler_->addListener(*test_listener);
 
-  
-
   ConnectionHandlerImpl connection_handler_impl;
   ActiveTcpListener tcp_listener(connection_handler_impl, test_listener);
   Network::MockConnectionSocket* connection = new NiceMock<Network::MockConnectionSocket>();
