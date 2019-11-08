@@ -65,7 +65,6 @@ void fillState(envoy::admin::v2alpha::ListenersConfigDump_DynamicListenerState& 
   state.mutable_listener()->MergeFrom(listener.config());
   TimestampUtil::systemClockToTimestamp(listener.last_updated_, *(state.mutable_last_updated()));
 }
-
 } // namespace
 
 std::vector<Network::FilterFactoryCb> ProdListenerComponentFactory::createNetworkFilterFactoryList_(
@@ -341,7 +340,12 @@ bool ListenerManagerImpl::addOrUpdateListenerInternal(const envoy::api::v2::List
     ENVOY_LOG(debug, "duplicate/locked listener '{}'. no add/update", name);
     return false;
   }
+  if (couldTakeOver(**existing_active_listener, config)) {
+    (*existing_active_listener)->takeOver(config);
 
+    // TODO: after take over
+    // metric, initialize
+  }
   ListenerImplPtr new_listener(new ListenerImpl(
       config, version_info, *this, name, added_via_api, workers_started_, hash,
       added_via_api ? server_.messageValidationContext().dynamicValidationVisitor()
@@ -439,6 +443,35 @@ bool ListenerManagerImpl::addOrUpdateListenerInternal(const envoy::api::v2::List
 
   new_listener_ref.initialize();
   return true;
+}
+
+// TODO(lambdai): Improve efficiency and false negative.
+bool ListenerManagerImpl::isFilterChainOnlyUpdate(const envoy::api::v2::Listener& existing_config,
+                                                  const envoy::api::v2::Listener& new_config) {
+  auto lhs = existing_config;
+  auto rhs = new_config;
+  lhs.clear_filter_chains();
+  rhs.clear_filter_chains();
+  return lhs.DebugString() == rhs.DebugString();
+
+  /* try below
+  bool IsEmptyDigitalMediaData(
+    const ads_proto::DigitalMediaData& digital_media_data) {
+  // Note that we set the app_id and vendor of the digital media data, so that
+  // the AppSignal is self-describing. Ignore these fields.
+  proto2::util::MessageDifferencer differ;
+  differ.IgnoreField(kAppIdFieldDescriptor);
+  differ.IgnoreField(kVendorFieldDescriptor);
+
+  return differ.Compare(digital_media_data,
+                        ads_proto::DigitalMediaData::default_instance());
+  }
+  */
+}
+
+bool ListenerManagerImpl::couldTakeOver(ListenerImpl& existing_listener,
+                                        const envoy::api::v2::Listener& new_config) {
+  return isFilterChainOnlyUpdate(existing_listener.config(), new_config);
 }
 
 bool ListenerManagerImpl::hasListenerWithAddress(const ListenerList& list,

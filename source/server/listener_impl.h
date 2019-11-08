@@ -64,6 +64,15 @@ public:
     return ret;
   }
 
+  /**
+   * Update this active listener with the new listener proto config.
+   * May throw EnvoyException.
+   *
+   * @param config the new listener config
+   * @return true if update succeeds
+   */
+  bool takeOver(const envoy::api::v2::Listener& config);
+
   Network::Address::InstanceConstSharedPtr address() const { return address_; }
   Network::Address::SocketType socketType() const { return socket_type_; }
   const envoy::api::v2::Listener& config() const { return config_; }

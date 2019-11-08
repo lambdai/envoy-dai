@@ -283,6 +283,11 @@ void ListenerImpl::initialize() {
   }
 }
 
+bool ListenerImpl::takeOver(const envoy::api::v2::Listener& config) {
+  UNREFERENCED_PARAMETER(config);
+  return true;
+}
+
 Init::Manager& ListenerImpl::initManager() {
   // See initialize() for why we choose different init managers to return.
   if (workers_started_) {
