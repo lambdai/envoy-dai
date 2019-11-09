@@ -163,7 +163,7 @@ public:
 private:
   void addListenSocketOption(const Network::Socket::OptionConstSharedPtr& option) {
     ensureSocketOptions();
-    listen_socket_options_->emplace_back(std::move(option));
+    listen_socket_options_->emplace_back(option);
   }
   void addListenSocketOptions(const Network::Socket::OptionsSharedPtr& options) {
     ensureSocketOptions();
@@ -173,6 +173,7 @@ private:
   ListenerManagerImpl& parent_;
   Network::Address::InstanceConstSharedPtr address_;
   std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
+  ThreadLocal::SlotPtr fcm_tls_;
 
   Network::Address::SocketType socket_type_;
   Network::SocketSharedPtr socket_;

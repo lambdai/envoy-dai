@@ -340,7 +340,8 @@ bool ListenerManagerImpl::addOrUpdateListenerInternal(const envoy::api::v2::List
     ENVOY_LOG(debug, "duplicate/locked listener '{}'. no add/update", name);
     return false;
   }
-  if (couldTakeOver(**existing_active_listener, config)) {
+  if (existing_active_listener != active_listeners_.end() &&
+      couldTakeOver(**existing_active_listener, config)) {
     (*existing_active_listener)->takeOver(config);
 
     // TODO: after take over

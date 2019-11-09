@@ -32,6 +32,7 @@ ListenerImpl::ListenerImpl(const envoy::api::v2::Listener& config, const std::st
                            ProtobufMessage::ValidationVisitor& validation_visitor)
     : parent_(parent), address_(Network::Address::resolveProtoAddress(config.address())),
       filter_chain_manager_(std::make_shared<FilterChainManagerImpl>(address_)),
+      fcm_tls_(parent_.server_.threadLocal().allocateSlot()),
       socket_type_(Network::Utility::protobufAddressSocketType(config.address())),
       global_scope_(parent_.server_.stats().createScope("")),
       listener_scope_(
