@@ -18,7 +18,7 @@ namespace Network {
 
 void ListenerImpl::listenCallback(evconnlistener*, evutil_socket_t fd, sockaddr* remote_addr,
                                   int remote_addr_len, void* arg) {
-  ListenerImpl* listener = static_cast<ListenerImpl*>(arg);
+  auto* listener = static_cast<ListenerImpl*>(arg);
 
   // Create the IoSocketHandleImpl for the fd here.
   IoHandlePtr io_handle = std::make_unique<IoSocketHandleImpl>(fd);

@@ -4,10 +4,13 @@
 
 #include "envoy/api/v2/listener/listener.pb.h"
 #include "envoy/server/transport_socket_config.h"
+#include "envoy/thread_local/thread_local.h"
 
 #include "common/common/logger.h"
 #include "common/network/cidr_range.h"
 #include "common/network/lc_trie.h"
+
+#include "server/tag_generator_batch_impl.h"
 
 #include "absl/container/flat_hash_map.h"
 
@@ -21,6 +24,14 @@ public:
   buildFilterChain(const ::envoy::api::v2::listener::FilterChain& filter_chain) const PURE;
 };
 
+class FilterChainManagerImpl;
+
+class ThreadLocalFilterChainManagerHelper : ThreadLocal::ThreadLocalObject {
+public:
+  std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
+  // Helper
+  std::shared_ptr<std::unordered_set<uint64_t>> filter_chains_trait_;
+};
 /**
  * Implementation of FilterChainManager.
  */

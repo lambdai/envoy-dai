@@ -88,7 +88,7 @@ public:
   // Network::ListenerConfig
   Network::FilterChainManager& filterChainManager() override { return *filter_chain_manager_; }
   Network::FilterChainManagerSharedPtr sharedFilterChainManager() override {
-    return filter_chain_manager_;
+    return fcm_tls_->getTyped<ThreadLocalFilterChainManagerHelper>().filter_chain_manager_;
   }
   Network::FilterChainFactory& filterChainFactory() override { return *this; }
   Network::Socket& socket() override { return *socket_; }
