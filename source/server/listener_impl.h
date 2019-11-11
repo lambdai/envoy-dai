@@ -12,6 +12,7 @@
 #include "common/init/manager_impl.h"
 
 #include "server/filter_chain_manager_impl.h"
+#include "server/tag_generator_batch_impl.h"
 
 namespace Envoy {
 namespace Server {
@@ -171,6 +172,7 @@ private:
   }
 
   ListenerManagerImpl& parent_;
+  TagGeneratorBatchImpl filter_chain_tag_generator_;
   Network::Address::InstanceConstSharedPtr address_;
   std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
   ThreadLocal::SlotPtr fcm_tls_;

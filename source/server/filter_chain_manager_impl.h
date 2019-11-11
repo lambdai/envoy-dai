@@ -148,9 +148,9 @@ private:
 class FilterChainImpl : public Network::FilterChain {
 public:
   FilterChainImpl(Network::TransportSocketFactoryPtr&& transport_socket_factory,
-                  std::vector<Network::FilterFactoryCb>&& filters_factory)
+                  std::vector<Network::FilterFactoryCb>&& filters_factory, int64_t tag = 0)
       : transport_socket_factory_(std::move(transport_socket_factory)),
-        filters_factory_(std::move(filters_factory)) {}
+        filters_factory_(std::move(filters_factory)), tag_(tag) {}
 
   // Network::FilterChain
   const Network::TransportSocketFactory& transportSocketFactory() const override {
@@ -161,9 +161,12 @@ public:
     return filters_factory_;
   }
 
+  int64_t getTag() const override { return tag_; }
+
 private:
   const Network::TransportSocketFactoryPtr transport_socket_factory_;
   const std::vector<Network::FilterFactoryCb> filters_factory_;
+  const int64_t tag_{0};
 };
 
 } // namespace Server

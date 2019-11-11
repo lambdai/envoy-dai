@@ -238,14 +238,44 @@ private:
 
 class ListenerFilterChainFactoryBuilder : public FilterChainFactoryBuilder {
 public:
+  using TagsIndex = std::unordered_map<const ::envoy::api::v2::listener::FilterChain*, int64_t>;
   ListenerFilterChainFactoryBuilder(
-      ListenerImpl& listener, Configuration::TransportSocketFactoryContextImpl& factory_context);
+      ListenerImpl& listener, Configuration::TransportSocketFactoryContextImpl& factory_context,
+      TagGeneratorBatchImpl& tag_generator);
+
   std::unique_ptr<Network::FilterChain>
   buildFilterChain(const ::envoy::api::v2::listener::FilterChain& filter_chain) const override;
 
+  // consider rewrite ListenerFilterChainFactoryBuilder so that submitFilterChains is the only
+  // interface.
+  void submitFilterChains(
+      FilterChainManagerImpl& fcm,
+      absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span);
+
 private:
+  class InternalBuilder : public FilterChainFactoryBuilder {
+  public:
+    InternalBuilder(const ListenerFilterChainFactoryBuilder& outer_builder,
+                    const TagsIndex& filter_chain_index = emptyTags())
+        : outer_builder_(outer_builder), filter_chain_index_(filter_chain_index) {}
+
+    std::unique_ptr<Network::FilterChain>
+    buildFilterChain(const ::envoy::api::v2::listener::FilterChain& filter_chain) const override {
+      auto iter = filter_chain_index_.find(&filter_chain);
+      auto tag = iter != filter_chain_index_.end() ? iter->second : 0;
+      return buildFilterChainInternal(filter_chain, tag);
+    }
+    static const TagsIndex& emptyTags();
+    const ListenerFilterChainFactoryBuilder& outer_builder_;
+    const TagsIndex& filter_chain_index_;
+
+    std::unique_ptr<Network::FilterChain>
+    buildFilterChainInternal(const ::envoy::api::v2::listener::FilterChain& filter_chain,
+                             uint64_t tag) const;
+  };
   ListenerImpl& parent_;
   Configuration::TransportSocketFactoryContextImpl& factory_context_;
+  TagGeneratorBatchImpl& tag_generator_;
 };
 
 } // namespace Server

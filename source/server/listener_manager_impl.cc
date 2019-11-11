@@ -740,11 +740,28 @@ void ListenerManagerImpl::endListenerUpdate(FailureStates&& failure_states) {
 
 ListenerFilterChainFactoryBuilder::ListenerFilterChainFactoryBuilder(
     ListenerImpl& listener,
-    Server::Configuration::TransportSocketFactoryContextImpl& factory_context)
-    : parent_(listener), factory_context_(factory_context) {}
+    Server::Configuration::TransportSocketFactoryContextImpl& factory_context,
+    TagGeneratorBatchImpl& tag_generator)
+    : parent_(listener), factory_context_(factory_context), tag_generator_(tag_generator) {}
 
 std::unique_ptr<Network::FilterChain> ListenerFilterChainFactoryBuilder::buildFilterChain(
     const ::envoy::api::v2::listener::FilterChain& filter_chain) const {
+  ListenerFilterChainFactoryBuilder::InternalBuilder builder(*this);
+  return builder.buildFilterChainInternal(filter_chain, 0);
+}
+
+void ListenerFilterChainFactoryBuilder::submitFilterChains(
+    FilterChainManagerImpl& fcm,
+    absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span) {
+
+  const auto& tags = tag_generator_.addFilterChains(filter_chain_span);
+  fcm.addFilterChain(filter_chain_span, *this);
+  UNREFERENCED_PARAMETER(tags);
+}
+
+std::unique_ptr<Network::FilterChain>
+ListenerFilterChainFactoryBuilder::InternalBuilder::buildFilterChainInternal(
+    const ::envoy::api::v2::listener::FilterChain& filter_chain, uint64_t tag) const {
   // If the cluster doesn't have transport socket configured, then use the default "raw_buffer"
   // transport socket or BoringSSL-based "tls" transport socket if TLS settings are configured.
   // We copy by value first then override if necessary.
@@ -762,15 +779,23 @@ std::unique_ptr<Network::FilterChain> ListenerFilterChainFactoryBuilder::buildFi
   auto& config_factory = Config::Utility::getAndCheckFactory<
       Server::Configuration::DownstreamTransportSocketConfigFactory>(transport_socket.name());
   ProtobufTypes::MessagePtr message = Config::Utility::translateToFactoryConfig(
-      transport_socket, parent_.messageValidationVisitor(), config_factory);
+      transport_socket, outer_builder_.parent_.messageValidationVisitor(), config_factory);
 
   std::vector<std::string> server_names(filter_chain.filter_chain_match().server_names().begin(),
                                         filter_chain.filter_chain_match().server_names().end());
 
   return std::make_unique<FilterChainImpl>(
-      config_factory.createTransportSocketFactory(*message, factory_context_,
+      config_factory.createTransportSocketFactory(*message, outer_builder_.factory_context_,
                                                   std::move(server_names)),
-      parent_.parent_.factory_.createNetworkFilterFactoryList(filter_chain.filters(), parent_));
+      outer_builder_.parent_.parent_.factory_.createNetworkFilterFactoryList(
+          filter_chain.filters(), outer_builder_.parent_),
+      tag);
+}
+
+/* static */
+const ListenerFilterChainFactoryBuilder::TagsIndex&
+ListenerFilterChainFactoryBuilder::InternalBuilder::emptyTags() {
+  CONSTRUCT_ON_FIRST_USE(TagsIndex, {});
 }
 
 } // namespace Server

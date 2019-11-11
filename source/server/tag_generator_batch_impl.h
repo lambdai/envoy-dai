@@ -1,3 +1,5 @@
+#pragma once
+
 #include "envoy/api/v2/listener/listener.pb.h"
 
 #include "common/protobuf/utility.h"
@@ -16,7 +18,7 @@ class TagGeneratorBatchImpl : public TagGenerator {
 public:
   ~TagGeneratorBatchImpl() override;
   TagGenerator::Tags getTags() override;
-  Tags addFilterChains(
+  std::vector<int64_t> addFilterChains(
       absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span);
 
 private:

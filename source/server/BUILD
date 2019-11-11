@@ -271,6 +271,7 @@ envoy_cc_library(
         ":drain_manager_lib",
         ":filter_chain_manager_lib",
         ":listener_manager_impl",
+        ":tag_generator_lib",
         ":transport_socket_config_lib",
         ":well_known_names_lib",
         "//include/envoy/server:active_udp_listener_config_interface",
