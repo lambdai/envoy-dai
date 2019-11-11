@@ -285,18 +285,35 @@ void ListenerImpl::initialize() {
 }
 
 bool ListenerImpl::takeOver(const envoy::api::v2::Listener& config) {
-  auto fcm = std::make_shared<FilterChainManagerImpl>(address_);
+  auto fcm_helper = std::make_shared<ThreadLocalFilterChainManagerHelper>();
+  fcm_helper->fcm_init_manager_ = std::make_unique<Init::ManagerImpl>("fcm_take_over");
+  fcm_helper->filter_chain_manager_ = std::make_shared<FilterChainManagerImpl>(address_);
   Server::Configuration::TransportSocketFactoryContextImpl factory_context(
       parent_.server_.admin(), parent_.server_.sslContextManager(), *listener_scope_,
       parent_.server_.clusterManager(), parent_.server_.localInfo(), parent_.server_.dispatcher(),
       parent_.server_.random(), parent_.server_.stats(), parent_.server_.singletonManager(),
-      // TODO: merge master with new messagevalidatoionContext
       parent_.server_.threadLocal(),
       parent_.server_.messageValidationContext().dynamicValidationVisitor(), parent_.server_.api());
-  factory_context.setInitManager(initManager());
+  factory_context.setInitManager(*fcm_helper->fcm_init_manager_);
   ListenerFilterChainFactoryBuilder builder(*this, factory_context, filter_chain_tag_generator_);
-  builder.submitFilterChains(*fcm, config.filter_chains());
-  // fcm->addFilterChain(config.filter_chains(), builder);
+  builder.submitFilterChains(*fcm_helper->filter_chain_manager_, config.filter_chains());
+
+  // TODO(lambdai): determine the correct strategy for concurrent take over. Cancel previous or
+  // allow it?
+  pending_fcms_.emplace_back(fcm_helper);
+  fcm_helper->fcm_init_manager_->initialize(
+      Init::WatcherImpl("fcm_take_over", [fcm_helper, this]() {
+        fcm_tls_->set([fcm_helper](Event::Dispatcher& dispatcher) mutable
+                      -> ThreadLocal::ThreadLocalObjectSharedPtr {
+          UNREFERENCED_PARAMETER(dispatcher);
+          return fcm_helper;
+        });
+
+        // Remove all the fcms which were added prior to this fcm, if any.
+        // This logic is correct no matter the insert strategy above.
+        pending_fcms_.erase(pending_fcms_.begin(),
+                            std::find(pending_fcms_.begin(), pending_fcms_.end(), fcm_helper));
+      }));
   return true;
 }
 

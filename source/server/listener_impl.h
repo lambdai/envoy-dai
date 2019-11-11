@@ -174,7 +174,10 @@ private:
   ListenerManagerImpl& parent_;
   TagGeneratorBatchImpl filter_chain_tag_generator_;
   Network::Address::InstanceConstSharedPtr address_;
+  // Active filter_chain_manager
   std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
+  // The pending filter chain managers in the order of insertion.
+  std::list<std::shared_ptr<ThreadLocalFilterChainManagerHelper>> pending_fcms_;
   ThreadLocal::SlotPtr fcm_tls_;
 
   Network::Address::SocketType socket_type_;

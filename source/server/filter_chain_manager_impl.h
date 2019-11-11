@@ -7,6 +7,7 @@
 #include "envoy/thread_local/thread_local.h"
 
 #include "common/common/logger.h"
+#include "common/init/manager_impl.h"
 #include "common/network/cidr_range.h"
 #include "common/network/lc_trie.h"
 
@@ -26,11 +27,14 @@ public:
 
 class FilterChainManagerImpl;
 
-class ThreadLocalFilterChainManagerHelper : ThreadLocal::ThreadLocalObject {
+class ThreadLocalFilterChainManagerHelper : public ThreadLocal::ThreadLocalObject {
 public:
+  // The FCM which can be snapped by worker.
   std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
-  // Helper
-  std::shared_ptr<std::unordered_set<uint64_t>> filter_chains_trait_;
+
+  // Below could be mutated by main thread. Worker thread should access with causion.
+  std::unique_ptr<Init::ManagerImpl> fcm_init_manager_;
+  std::unique_ptr<std::unordered_set<uint64_t>> filter_chains_trait_;
 };
 /**
  * Implementation of FilterChainManager.
