@@ -18,7 +18,7 @@ class TagGeneratorBatchImpl : public TagGenerator {
 public:
   ~TagGeneratorBatchImpl() override;
   TagGenerator::Tags getTags() override;
-  std::vector<int64_t> addFilterChains(
+  TagGenerator::Tags addFilterChains(
       absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span);
 
 private:

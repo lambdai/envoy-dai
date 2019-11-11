@@ -34,6 +34,7 @@ public:
 
   // Below could be mutated by main thread. Worker thread should access with causion.
   std::unique_ptr<Init::ManagerImpl> fcm_init_manager_;
+  std::unique_ptr<Init::WatcherImpl> fcm_init_watcher_;
   std::unique_ptr<std::unordered_set<uint64_t>> filter_chains_trait_;
 };
 /**

@@ -49,6 +49,10 @@ public:
   void initializeStats(Stats::Scope& scope, const std::string& prefix) override;
   void stop() override;
   void stopListener(Network::ListenerConfig& listener, std::function<void()> completion) override;
+  void updateListener(
+      uint64_t listener_tag,
+      std::function<bool(Network::ConnectionHandler::ActiveListener&)> listener_update_func,
+      std::function<void(bool)> completion) override;
 
 private:
   void threadRoutine(GuardDog& guard_dog);

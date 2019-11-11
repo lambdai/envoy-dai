@@ -698,6 +698,26 @@ void ListenerManagerImpl::stopListener(Network::ListenerConfig& listener,
   }
 }
 
+bool ListenerManagerImpl::updateFilterChainManager(
+    uint64_t listener_tag, ThreadLocalFilterChainManagerHelper& filter_chain_helper,
+    TagGenerator::Tags filter_chain_tags) {
+  UNREFERENCED_PARAMETER(filter_chain_helper);
+  UNREFERENCED_PARAMETER(filter_chain_tags);
+  for (const auto& worker : workers_) {
+    worker->updateListener(
+        listener_tag,
+        /* update listener func */
+        [&filter_chain_helper,
+         filter_chain_tags](Network::ConnectionHandler::ActiveListener&) -> bool {
+          UNREFERENCED_PARAMETER(filter_chain_helper);
+          return true;
+        },
+        /* completion */
+        [](bool) {});
+  }
+  return true;
+}
+
 void ListenerManagerImpl::stopListeners(StopListenersType stop_listeners_type) {
   stop_listeners_type_ = stop_listeners_type;
   for (Network::ListenerConfig& listener : listeners()) {
@@ -750,13 +770,13 @@ std::unique_ptr<Network::FilterChain> ListenerFilterChainFactoryBuilder::buildFi
   return builder.buildFilterChainInternal(filter_chain, 0);
 }
 
-void ListenerFilterChainFactoryBuilder::submitFilterChains(
+TagGenerator::Tags ListenerFilterChainFactoryBuilder::submitFilterChains(
     FilterChainManagerImpl& fcm,
     absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span) {
 
-  const auto& tags = tag_generator_.addFilterChains(filter_chain_span);
+  auto tags = tag_generator_.addFilterChains(filter_chain_span);
   fcm.addFilterChain(filter_chain_span, *this);
-  UNREFERENCED_PARAMETER(tags);
+  return tags;
 }
 
 std::unique_ptr<Network::FilterChain>

@@ -72,6 +72,9 @@ public:
   void stopListeners() override;
   void disableListeners() override;
   void enableListeners() override;
+  bool updateListener(uint64_t listener_tag,
+                      std::function<bool(Network::ConnectionHandler::ActiveListener&)>
+                          listener_update_func) override;
   const std::string& statPrefix() override { return per_handler_stat_prefix_; }
 
   /**

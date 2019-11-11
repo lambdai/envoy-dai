@@ -4,15 +4,14 @@ namespace Envoy {
 namespace Server {
 TagGeneratorBatchImpl::~TagGeneratorBatchImpl() = default;
 
-std::vector<int64_t> TagGeneratorBatchImpl::addFilterChains(
+TagGenerator::Tags TagGeneratorBatchImpl::addFilterChains(
     absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span) {
-  std::vector<int64_t> res;
-  res.resize(filter_chain_span.size());
+  TagGenerator::Tags tags;
   for (const auto& fc : filter_chain_span) {
     const auto& kv = filter_chains_.emplace(*fc, ++next_tag_);
-    res.emplace_back(kv.second ? next_tag_ : kv.first->second);
+    tags.insert(kv.second ? next_tag_ : kv.first->second);
   }
-  return res;
+  return tags;
 }
 
 TagGenerator::Tags TagGeneratorBatchImpl::getTags() {

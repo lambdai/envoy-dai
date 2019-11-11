@@ -147,6 +147,15 @@ public:
   void stopWorkers() override;
   void beginListenerUpdate() override { error_state_tracker_.clear(); }
   void endListenerUpdate(FailureStates&& failure_state) override;
+
+  /**
+   * @brief
+   * @return true if the filter chains are updated.
+   */
+  bool updateFilterChainManager(uint64_t listener_tag,
+                                ThreadLocalFilterChainManagerHelper& filter_chain_helper,
+                                TagGenerator::Tags filter_chain_tags);
+
   Http::Context& httpContext() { return server_.httpContext(); }
 
   Instance& server_;
@@ -248,7 +257,7 @@ public:
 
   // consider rewrite ListenerFilterChainFactoryBuilder so that submitFilterChains is the only
   // interface.
-  void submitFilterChains(
+  TagGenerator::Tags submitFilterChains(
       FilterChainManagerImpl& fcm,
       absl::Span<const ::envoy::api::v2::listener::FilterChain* const> filter_chain_span);
 

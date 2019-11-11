@@ -296,24 +296,27 @@ bool ListenerImpl::takeOver(const envoy::api::v2::Listener& config) {
       parent_.server_.messageValidationContext().dynamicValidationVisitor(), parent_.server_.api());
   factory_context.setInitManager(*fcm_helper->fcm_init_manager_);
   ListenerFilterChainFactoryBuilder builder(*this, factory_context, filter_chain_tag_generator_);
-  builder.submitFilterChains(*fcm_helper->filter_chain_manager_, config.filter_chains());
+  auto tags =
+      builder.submitFilterChains(*fcm_helper->filter_chain_manager_, config.filter_chains());
 
   // TODO(lambdai): determine the correct strategy for concurrent take over. Cancel previous or
   // allow it?
   pending_fcms_.emplace_back(fcm_helper);
-  fcm_helper->fcm_init_manager_->initialize(
-      Init::WatcherImpl("fcm_take_over", [fcm_helper, this]() {
+
+  fcm_helper->fcm_init_watcher_ = std::make_unique<Init::WatcherImpl>(
+      "fcm_take_over", [fcm_helper, tags = std::move(tags), this]() {
         fcm_tls_->set([fcm_helper](Event::Dispatcher& dispatcher) mutable
                       -> ThreadLocal::ThreadLocalObjectSharedPtr {
           UNREFERENCED_PARAMETER(dispatcher);
           return fcm_helper;
         });
-
+        parent_.updateFilterChainManager(listener_tag_, *fcm_helper, tags);
         // Remove all the fcms which were added prior to this fcm, if any.
         // This logic is correct no matter the insert strategy above.
         pending_fcms_.erase(pending_fcms_.begin(),
                             std::find(pending_fcms_.begin(), pending_fcms_.end(), fcm_helper));
-      }));
+      });
+  fcm_helper->fcm_init_manager_->initialize(*fcm_helper->fcm_init_watcher_);
   return true;
 }
 

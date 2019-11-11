@@ -56,6 +56,21 @@ void ConnectionHandlerImpl::removeListeners(uint64_t listener_tag) {
   }
 }
 
+bool ConnectionHandlerImpl::updateListener(
+    uint64_t listener_tag,
+    std::function<bool(Network::ConnectionHandler::ActiveListener&)> activeListenerUpdate) {
+  bool res = false;
+  for (auto& listener : listeners_) {
+    // listener type: std::pair<Network::Address::InstanceConstSharedPtr, ActiveListenerDetails>
+    if (listener.second.listener_->listenerTag() == listener_tag) {
+      // TODO(lambdai): explore in which condition there are more than one active listeners sharing
+      // the same tag
+      res |= activeListenerUpdate(*listener.second.listener_);
+    }
+  }
+  return res;
+}
+
 void ConnectionHandlerImpl::stopListeners(uint64_t listener_tag) {
   for (auto& listener : listeners_) {
     if (listener.second.listener_->listenerTag() == listener_tag) {
