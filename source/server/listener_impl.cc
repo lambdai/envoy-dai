@@ -305,10 +305,27 @@ bool ListenerImpl::takeOver(const envoy::api::v2::Listener& config) {
 
   fcm_helper->fcm_init_watcher_ = std::make_unique<Init::WatcherImpl>(
       "fcm_take_over", [fcm_helper, tags = std::move(tags), this]() {
-        fcm_tls_->set([fcm_helper](Event::Dispatcher& dispatcher) mutable
+        /*
+          tls_->runOnAllThreads([update_fn]()
+                            -> ThreadLocal::ThreadLocalObjectSharedPtr {
+    auto prev_thread_local_config = std::dynamic_pointer_cast<ThreadLocalConfig>(previous);
+    prev_thread_local_config->config_ = update_fn(prev_thread_local_config->config_);
+    return previous;
+  });
+  */
+        fcm_tls_->runOnAllThreads([fcm_helper](ThreadLocal::ThreadLocalObjectSharedPtr previous_fcm)  mutable
                       -> ThreadLocal::ThreadLocalObjectSharedPtr {
-          UNREFERENCED_PARAMETER(dispatcher);
-          return fcm_helper;
+          auto prev_thread_local_config = std::dynamic_pointer_cast<ThreadLocalFilterChainManagerHelper>(previous_fcm);
+          auto new_thread_local_config = std::make_shared<ThreadLocalFilterChainManagerHelper>();          
+          UNREFERENCED_PARAMETER(prev_thread_local_config);
+          //new_thread_local_config.replace(prev_thread_local_config);
+          return new_thread_local_config;
+          // replace:
+          // fetch the listener instance
+          // moving connection according to tag
+          // drain
+          // init:
+          // fill listener instance
         });
         parent_.updateFilterChainManager(listener_tag_, *fcm_helper, tags);
         // Remove all the fcms which were added prior to this fcm, if any.
