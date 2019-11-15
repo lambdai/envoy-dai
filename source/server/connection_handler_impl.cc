@@ -302,6 +302,13 @@ void ConnectionHandlerImpl::ActiveTcpListener::onAccept(Network::ConnectionSocke
   onAcceptWorker(std::move(socket), config_.handOffRestoredDestinationConnections(), false);
 }
 
+void ConnectionHandlerImpl::ActiveTcpListener::onNewFilterChainManger(
+    Network::FilterChainManager& filter_chain_manager) {
+  UNREFERENCED_PARAMETER(filter_chain_manager);
+  // obtain the tags traits
+  // drain the connections out of the tracking tags
+}
+
 void ConnectionHandlerImpl::ActiveTcpListener::onAcceptWorker(
     Network::ConnectionSocketPtr&& socket, bool hand_off_restored_destination_connections,
     bool rebalanced) {

@@ -31,6 +31,8 @@ class ThreadLocalFilterChainManagerHelper : public ThreadLocal::ThreadLocalObjec
 public:
   // The FCM which can be snapped by worker.
   std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
+  // The per worker listener which owns the thread local filter chain manager
+  Network::ListenerCallbacks* listener_;
 
   // Below could be mutated by main thread. Worker thread should access with causion.
   std::unique_ptr<Init::ManagerImpl> fcm_init_manager_;

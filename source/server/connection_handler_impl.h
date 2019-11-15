@@ -118,6 +118,7 @@ private:
 
     // Network::ListenerCallbacks
     void onAccept(Network::ConnectionSocketPtr&& socket) override;
+    void onNewFilterChainManger(Network::FilterChainManager& filter_chain_manager) override;
 
     // ActiveListenerImplBase
     Network::Listener* listener() override { return listener_.get(); }

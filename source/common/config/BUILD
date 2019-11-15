@@ -211,7 +211,10 @@ envoy_cc_library(
     name = "pausable_ack_queue_lib",
     srcs = ["pausable_ack_queue.cc"],
     hdrs = ["pausable_ack_queue.h"],
-    deps = ["//source/common/common:assert_lib"],
+    deps = [
+        "//source/common/common:assert_lib",
+        "@envoy_api//envoy/api/v2:pkg_cc_proto",
+    ],
 )
 
 envoy_cc_library(

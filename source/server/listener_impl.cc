@@ -313,12 +313,14 @@ bool ListenerImpl::takeOver(const envoy::api::v2::Listener& config) {
     return previous;
   });
   */
-        fcm_tls_->runOnAllThreads([fcm_helper](ThreadLocal::ThreadLocalObjectSharedPtr previous_fcm)  mutable
-                      -> ThreadLocal::ThreadLocalObjectSharedPtr {
-          auto prev_thread_local_config = std::dynamic_pointer_cast<ThreadLocalFilterChainManagerHelper>(previous_fcm);
-          auto new_thread_local_config = std::make_shared<ThreadLocalFilterChainManagerHelper>();          
+        fcm_tls_->runOnAllThreads([fcm_helper](
+                                      ThreadLocal::ThreadLocalObjectSharedPtr previous_fcm) mutable
+                                  -> ThreadLocal::ThreadLocalObjectSharedPtr {
+          auto prev_thread_local_config =
+              std::dynamic_pointer_cast<ThreadLocalFilterChainManagerHelper>(previous_fcm);
+          auto new_thread_local_config = std::make_shared<ThreadLocalFilterChainManagerHelper>();
           UNREFERENCED_PARAMETER(prev_thread_local_config);
-          //new_thread_local_config.replace(prev_thread_local_config);
+          // new_thread_local_config.replace(prev_thread_local_config);
           return new_thread_local_config;
           // replace:
           // fetch the listener instance
