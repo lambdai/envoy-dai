@@ -477,12 +477,9 @@ bool ListenerManagerImpl::hasListenerWithAddress(const ListenerList& list,
 bool ListenerManagerImpl::shareSocketWithOtherListener(
     const ListenerList& list, const Network::ListenSocketFactorySharedPtr& socket_factory) {
   ASSERT(socket_factory->sharedSocket().has_value());
-  for (const auto& listener : list) {
-    if (listener->getSocketFactory() == socket_factory) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(list.cbegin(), list.cend(), [&socket_factory](auto& listener) {
+    return listener->getSocketFactory() == socket_factory;
+  });
 }
 
 void ListenerManagerImpl::drainListener(ListenerImplPtr&& listener) {
