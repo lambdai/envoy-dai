@@ -358,6 +358,21 @@ bool ListenerManagerImpl::addOrUpdateListenerInternal(const envoy::api::v2::List
     return false;
   }
 
+  if (existing_active_listener != active_listeners_.end()) {
+    auto update_decision =
+        (*existing_active_listener)->supportUpdateFilterChain(config, workers_started_);
+    switch (update_decision) {
+    // The ongoing update is equivalent to the new config
+    /*case UpdateDecision::UpdateInFlight*/
+    case UpdateDecision::Update:
+      (*existing_active_listener)->updateFilterChain(config);
+      stats_.listener_modified_.inc();
+      return true;
+    case UpdateDecision::NotSupported:
+      break;
+    }
+  }
+
   ListenerImplPtr new_listener(
       new ListenerImpl(config, version_info, *this, name, added_via_api, workers_started_, hash,
                        added_via_api ? server_.messageValidationContext().dynamicValidationVisitor()
@@ -394,6 +409,7 @@ bool ListenerManagerImpl::addOrUpdateListenerInternal(const envoy::api::v2::List
     if (workers_started_) {
       new_listener->debugLog("add warming listener");
       warming_listeners_.emplace_back(std::move(new_listener));
+      (*existing_active_listener)->cancelUpdate();
     } else {
       new_listener->debugLog("update active listener");
       *existing_active_listener = std::move(new_listener);

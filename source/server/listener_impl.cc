@@ -406,5 +406,13 @@ void ListenerImpl::setSocketFactory(const Network::ListenSocketFactorySharedPtr&
   socket_factory_ = socket_factory;
 }
 
+UpdateDecision ListenerImpl::supportUpdateFilterChain(const envoy::api::v2::Listener& config,
+                                                      bool worker_started) {
+  UNREFERENCED_PARAMETER(config);
+  UNREFERENCED_PARAMETER(worker_started);
+  return UpdateDecision::NotSupported;
+}
+void updateFilterChain(const envoy::api::v2::Listener& config) { UNREFERENCED_PARAMETER(config); }
+void cancelUpdate() {}
 } // namespace Server
 } // namespace Envoy
