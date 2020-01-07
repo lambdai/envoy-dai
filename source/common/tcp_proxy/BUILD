@@ -35,6 +35,7 @@ envoy_cc_library(
         "//include/envoy/upstream:cluster_manager_interface",
         "//include/envoy/upstream:upstream_interface",
         "//source/common/access_log:access_log_lib",
+        "//source/common/bpf:util_lib",
         "//source/common/common:assert_lib",
         "//source/common/common:empty_string",
         "//source/common/common:macros",

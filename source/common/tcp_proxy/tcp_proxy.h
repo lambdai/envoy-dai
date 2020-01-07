@@ -20,6 +20,7 @@
 #include "envoy/upstream/cluster_manager.h"
 #include "envoy/upstream/upstream.h"
 
+#include "common/bpf/util.h"
 #include "common/common/logger.h"
 #include "common/network/cidr_range.h"
 #include "common/network/filter_impl.h"
@@ -360,6 +361,11 @@ protected:
   void onIdleTimeout();
   void resetIdleTimer();
   void disableIdleTimer();
+
+  // Setup bpf program to the kernel to redirect the traffic.
+  void setupBpf(int downstream_fd, int upstream_fd);
+  bpf_object* obj_;
+  int map_fd_;
 
   const ConfigSharedPtr config_;
   Upstream::ClusterManager& cluster_manager_;

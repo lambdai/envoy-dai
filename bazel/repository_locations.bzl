@@ -332,6 +332,13 @@ DEPENDENCY_REPOSITORIES = dict(
         use_category = ["dataplane"],
         cpe = "N/A",
     ),
+    com_github_libbpf_libbpf = dict(
+        sha256 = "3e29c012ab227c0435b5a81f0edf193639fdd26699424089696fb47b76f06f17",
+        strip_prefix = "libbpf-868739519894fbf2cdb81f1f9222f1b665670096",
+        urls = ["https://github.com/libbpf/libbpf/archive/868739519894fbf2cdb81f1f9222f1b665670096.tar.gz"],
+        use_category = ["dataplane"],
+        cpe = "N/A",
+    ),
     com_google_googletest = dict(
         sha256 = "9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb",
         strip_prefix = "googletest-release-1.10.0",

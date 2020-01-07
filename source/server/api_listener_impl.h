@@ -98,6 +98,7 @@ protected:
         return parent_.parent_.factory_context_.dispatcher();
       }
       uint64_t id() const override { return 12345; }
+      int fd() const override { NOT_IMPLEMENTED_GCOVR_EXCL_LINE; }
       std::string nextProtocol() const override { return EMPTY_STRING; }
       void noDelay(bool) override { NOT_IMPLEMENTED_GCOVR_EXCL_LINE; }
       void readDisable(bool) override {}

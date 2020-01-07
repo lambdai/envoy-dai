@@ -1,5 +1,9 @@
 #include "common/tcp_proxy/tcp_proxy.h"
 
+#include <error.h>
+#include <poll.h>
+#include <sys/resource.h>
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -475,6 +479,54 @@ void Filter::onPoolFailure(ConnectionPool::PoolFailureReason reason,
   }
 }
 
+void Filter::setupBpf(int downstream_fd, int upstream_fd) {
+  ENVOY_CONN_LOG(debug, "Start loading bpf program. downstream fd {}, upstream fd {}",
+                 read_callbacks_->connection(), downstream_fd, upstream_fd);
+
+  obj_ = bpf_object__open("icept_bpf.o");
+  Utils::bpf_check_ptr(obj_, "obj");
+
+  auto prog_parse = Utils::do_bpf_get_prog(obj_, "sk_skb_parser", BPF_PROG_TYPE_SK_SKB);
+  auto prog_verdict = Utils::do_bpf_get_prog(obj_, "sk_skb_verdict", BPF_PROG_TYPE_SK_SKB);
+
+  if (bpf_object__load(obj_)) {
+    ::error(1, 0, "bpf object load: %ld", libbpf_get_error(obj_));
+  }
+  ENVOY_CONN_LOG(debug, "Bpf object loaded.", read_callbacks_->connection());
+
+  auto map = bpf_object__find_map_by_name(obj_, "sock_map");
+  Utils::bpf_check_ptr(map, "map");
+  map_fd_ = bpf_map__fd(map);
+
+  Utils::do_bpf_attach_prog(prog_parse, map_fd_, BPF_SK_SKB_STREAM_PARSER);
+  Utils::do_bpf_attach_prog(prog_verdict, map_fd_, BPF_SK_SKB_STREAM_VERDICT);
+
+  ENVOY_CONN_LOG(debug, "Bpf program attached.", read_callbacks_->connection());
+
+  int key = 0;
+  int ret = bpf_map_update_elem(map_fd_, &key, &downstream_fd, BPF_ANY);
+  if (ret) {
+    ::error(1, ret, "bpf sockmap insert downstream");
+  }
+  key = 1;
+  ret = bpf_map_update_elem(map_fd_, &key, &upstream_fd, BPF_ANY);
+  if (ret) {
+    ::error(1, ret, "bpf sockmap insert upstream");
+  }
+
+  // pollfd pfd {downstream_fd, POLLRDHUP};
+  // pfd.fd = downstream_fd;
+  // pfd.events = POLLRDHUP;
+  // ret = ::poll(&pfd, 1, -1);
+  // if (ret == -1) {
+  //   ::error(1, errno, "poll");
+  // }
+  // if (ret == 0) {
+  //   ::error(1, 0, "poll: timeout");
+  // }
+  // ENVOY_CONN_LOG(debug, "clean bpf program.", read_callbacks_->connection());
+}
+
 void Filter::onPoolReadyBase(Upstream::HostDescriptionConstSharedPtr& host,
                              const Network::Address::InstanceConstSharedPtr& local_address,
                              Ssl::ConnectionInfoConstSharedPtr ssl_info) {
@@ -497,6 +549,10 @@ void Filter::onPoolReady(Tcp::ConnectionPool::ConnectionDataPtr&& conn_data,
                   latched_data->connection().streamInfo().downstreamSslConnection());
   read_callbacks_->connection().streamInfo().setUpstreamFilterState(
       latched_data->connection().streamInfo().filterState());
+  // Warning: bpf will bypass network upstream filter
+  setupBpf(downstreamConnection()->fd(), read_callbacks_->connection().fd());
+  ENVOY_CONN_LOG(debug, "bpf: downstream fd {}, upstream fd {}", read_callbacks_->connection(),
+                 downstreamConnection()->fd(), read_callbacks_->connection().fd());
 }
 
 void Filter::onPoolFailure(ConnectionPool::PoolFailureReason failure, absl::string_view,
@@ -514,6 +570,7 @@ void Filter::onPoolReady(Http::RequestEncoder& request_encoder,
 
   onPoolReadyBase(host, latched_encoder->getStream().connectionLocalAddress(),
                   info.downstreamSslConnection());
+  // TODO(lambdai): add bpf to http tunnel case
 }
 
 void Filter::onConnectTimeout() {
@@ -541,6 +598,13 @@ Network::FilterStatus Filter::onData(Buffer::Instance& data, bool end_stream) {
 }
 
 void Filter::onDownstreamEvent(Network::ConnectionEvent event) {
+  // TODO(lambdai): exclude http upstream.
+  if (event == Network::ConnectionEvent::RemoteClose ||
+      event == Network::ConnectionEvent::LocalClose) {
+    ENVOY_CONN_LOG(debug, "bpf: clean bpf program.", read_callbacks_->connection());
+    Utils::do_bpf_cleanup(obj_, map_fd_);
+  }
+
   if (upstream_) {
     Tcp::ConnectionPool::ConnectionDataPtr conn_data(upstream_->onDownstreamEvent(event));
     if (conn_data != nullptr &&
@@ -554,6 +618,7 @@ void Filter::onDownstreamEvent(Network::ConnectionEvent event) {
       disableIdleTimer();
     }
   }
+
   if (upstream_handle_) {
     if (event == Network::ConnectionEvent::LocalClose ||
         event == Network::ConnectionEvent::RemoteClose) {
@@ -581,6 +646,8 @@ void Filter::onUpstreamEvent(Network::ConnectionEvent event) {
   if (event == Network::ConnectionEvent::RemoteClose ||
       event == Network::ConnectionEvent::LocalClose) {
     upstream_.reset();
+    // ENVOY_CONN_LOG(debug, "bpf: clean bpf program.", read_callbacks_->connection());
+    // Utils::do_bpf_cleanup(obj_, map_fd_);
     disableIdleTimer();
 
     if (connecting) {

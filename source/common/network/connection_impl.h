@@ -61,6 +61,7 @@ public:
   void addBytesSentCallback(BytesSentCb cb) override;
   void enableHalfClose(bool enabled) override;
   void close(ConnectionCloseType type) override;
+  int fd() const override { return ioHandle().fd(); }
   std::string nextProtocol() const override { return transport_socket_->protocol(); }
   void noDelay(bool enable) override;
   void readDisable(bool disable) override;

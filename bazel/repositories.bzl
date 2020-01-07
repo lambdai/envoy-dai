@@ -154,6 +154,7 @@ def envoy_dependencies(skip_targets = []):
     # semi-standard in the Bazel community, intended to avoid both duplicate
     # dependencies and name conflicts.
     _com_github_c_ares_c_ares()
+    _com_github_libbpf_libbpf()
     _com_github_circonus_labs_libcircllhist()
     _com_github_cyan4973_xxhash()
     _com_github_datadog_dd_opentracing_cpp()
@@ -251,6 +252,18 @@ def _com_github_c_ares_c_ares():
     native.bind(
         name = "ares",
         actual = "@envoy//bazel/foreign_cc:ares",
+    )
+
+def _com_github_libbpf_libbpf():
+    location = _get_location("com_github_libbpf_libbpf")
+    http_archive(
+        name = "com_github_libbpf_libbpf",
+        build_file_content = BUILD_ALL_CONTENT,
+        **location
+    )
+    native.bind(
+        name = "libbpf",
+        actual = "@envoy//bazel/foreign_cc:libbpf",
     )
 
 def _com_github_cyan4973_xxhash():

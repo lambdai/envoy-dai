@@ -123,6 +123,11 @@ public:
   virtual Event::Dispatcher& dispatcher() PURE;
 
   /**
+   * @return int the fd of the socket.
+   */
+  virtual int fd() const PURE;
+
+  /**
    * @return uint64_t the unique local ID of this connection.
    */
   virtual uint64_t id() const PURE;

@@ -2,6 +2,7 @@ licenses(["notice"])  # Apache 2
 
 load("//bazel:envoy_build_system.bzl", "envoy_cmake_external", "envoy_package")
 load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+load("@rules_foreign_cc//tools/build_defs:make.bzl", "make")
 
 envoy_package()
 
@@ -234,4 +235,12 @@ envoy_cmake_external(
         "//bazel:windows_x86_64": ["zlibstatic.lib"],
         "//conditions:default": ["libz.a"],
     }),
+)
+
+make(
+    name = "libbpf",
+    lib_source = "@com_github_libbpf_libbpf//:all",
+    make_commands = ["CFLAGS=\"-g -O2 -Werror -Wall -fPIC\" BUILD_STATIC_ONLY=y DESTDIR=build make -C src install"],
+    postfix_script = "mkdir libbpf && mkdir libbpf/include && cp src/build/usr/include/bpf/* libbpf/include/ && mkdir libbpf/lib && cp -r src/build/usr/lib64/* libbpf/lib/ && cp -L -r --no-target-directory \"$BUILD_TMPDIR\"/libbpf \"$INSTALLDIR\"",
+    static_libraries = ["libbpf.a"],
 )

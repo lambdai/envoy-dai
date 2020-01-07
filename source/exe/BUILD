@@ -21,6 +21,10 @@ alias(
 
 envoy_cc_binary(
     name = "envoy-static",
+    linkopts = [
+        "-lelf",
+        "-lrt",
+    ],
     stamped = True,
     deps = ["envoy_main_entry_lib"],
 )
