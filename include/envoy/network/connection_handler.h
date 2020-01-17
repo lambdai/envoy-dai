@@ -20,6 +20,31 @@ public:
   virtual ~ConnectionHandler() = default;
 
   /**
+   * Used by ConnectionHandler to manage listeners.
+   */
+  class ActiveListener {
+  public:
+    virtual ~ActiveListener() = default;
+
+    /**
+     * @return the tag value as configured.
+     */
+    virtual uint64_t listenerTag() PURE;
+
+    /**
+     * @return the actual Listener object.
+     */
+    virtual Listener* listener() PURE;
+
+    /**
+     * Destroy the actual Listener it wraps.
+     */
+    virtual void destroy() PURE;
+  };
+
+  using ActiveListenerPtr = std::unique_ptr<ActiveListener>;
+
+  /**
    * @return uint64_t the number of active connections owned by the handler.
    */
   virtual uint64_t numConnections() PURE;
@@ -57,6 +82,10 @@ public:
    */
   virtual void stopListeners(uint64_t listener_tag) PURE;
 
+  virtual bool updateListener(
+      uint64_t listener_tag,
+      std::function<bool(Network::ConnectionHandler::ActiveListener&)> listener_update_func) PURE;
+
   /**
    * Stop all listeners. This will not close any connections and is used for draining.
    */
@@ -78,31 +107,6 @@ public:
    * @return the stat prefix used for per-handler stats.
    */
   virtual const std::string& statPrefix() PURE;
-
-  /**
-   * Used by ConnectionHandler to manage listeners.
-   */
-  class ActiveListener {
-  public:
-    virtual ~ActiveListener() = default;
-
-    /**
-     * @return the tag value as configured.
-     */
-    virtual uint64_t listenerTag() PURE;
-
-    /**
-     * @return the actual Listener object.
-     */
-    virtual Listener* listener() PURE;
-
-    /**
-     * Destroy the actual Listener it wraps.
-     */
-    virtual void destroy() PURE;
-  };
-
-  using ActiveListenerPtr = std::unique_ptr<ActiveListener>;
 };
 
 using ConnectionHandlerPtr = std::unique_ptr<ConnectionHandler>;

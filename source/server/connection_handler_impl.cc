@@ -56,6 +56,21 @@ void ConnectionHandlerImpl::removeListeners(uint64_t listener_tag) {
   }
 }
 
+bool ConnectionHandlerImpl::updateListener(
+    uint64_t listener_tag,
+    std::function<bool(Network::ConnectionHandler::ActiveListener&)> activeListenerUpdate) {
+  bool res = false;
+  for (auto& listener : listeners_) {
+    // listener type: std::pair<Network::Address::InstanceConstSharedPtr, ActiveListenerDetails>
+    if (listener.second.listener_->listenerTag() == listener_tag) {
+      // TODO(lambdai): explore in which condition there are more than one active listeners sharing
+      // the same tag
+      res |= activeListenerUpdate(*listener.second.listener_);
+    }
+  }
+  return res;
+}
+
 void ConnectionHandlerImpl::stopListeners(uint64_t listener_tag) {
   for (auto& listener : listeners_) {
     if (listener.second.listener_->listenerTag() == listener_tag) {
@@ -86,7 +101,12 @@ void ConnectionHandlerImpl::enableListeners() {
 
 void ConnectionHandlerImpl::ActiveTcpListener::removeConnection(ActiveTcpConnection& connection) {
   ENVOY_CONN_LOG(debug, "adding to cleanup list", *connection.connection_);
-  ActiveTcpConnectionPtr removed = connection.removeFromList(connections_);
+  auto connections = tagged_connections_.find(connection.tag_);
+  ASSERT(connections != tagged_connections_.end());
+  ActiveTcpConnectionPtr removed = connection.removeFromList(connections->second);
+  if (connections->second.empty()) {
+    tagged_connections_.erase(connections);
+  }
   parent_.dispatcher_.deferredDelete(std::move(removed));
 }
 
@@ -111,7 +131,8 @@ ConnectionHandlerImpl::ActiveTcpListener::ActiveTcpListener(ConnectionHandlerImp
                                                             Network::ListenerConfig& config)
     : ConnectionHandlerImpl::ActiveListenerImplBase(parent, config), parent_(parent),
       listener_(std::move(listener)), listener_filters_timeout_(config.listenerFiltersTimeout()),
-      continue_on_listener_filters_timeout_(config.continueOnListenerFiltersTimeout()) {
+      continue_on_listener_filters_timeout_(config.continueOnListenerFiltersTimeout()),
+      active_filter_chain_manager_(config.sharedFilterChainManager()) {
   config.connectionBalancer().registerHandler(*this);
 }
 
@@ -125,8 +146,11 @@ ConnectionHandlerImpl::ActiveTcpListener::~ActiveTcpListener() {
     parent_.dispatcher_.deferredDelete(std::move(removed));
   }
 
-  while (!connections_.empty()) {
-    connections_.front()->connection_->close(Network::ConnectionCloseType::NoFlush);
+  for (auto& kv : tagged_connections_) {
+    auto& connections = kv.second;
+    while (!connections.empty()) {
+      connections.front()->connection_->close(Network::ConnectionCloseType::NoFlush);
+    }
   }
 
   parent_.dispatcher_.clearDeferredDeleteList();
@@ -270,12 +294,19 @@ void ConnectionHandlerImpl::ActiveTcpSocket::newConnection() {
     // Particularly the assigned events need to reset before assigning new events in the follow up.
     accept_filters_.clear();
     // Create a new connection on this listener.
-    listener_.newConnection(std::move(socket_));
+    listener_.newConnection(*this);
   }
 }
 
 void ConnectionHandlerImpl::ActiveTcpListener::onAccept(Network::ConnectionSocketPtr&& socket) {
   onAcceptWorker(std::move(socket), config_.handOffRestoredDestinationConnections(), false);
+}
+
+void ConnectionHandlerImpl::ActiveTcpListener::onNewFilterChainManger(
+    Network::FilterChainManager& filter_chain_manager) {
+  UNREFERENCED_PARAMETER(filter_chain_manager);
+  // obtain the tags traits
+  // drain the connections out of the tracking tags
 }
 
 void ConnectionHandlerImpl::ActiveTcpListener::onAcceptWorker(
@@ -306,21 +337,23 @@ void ConnectionHandlerImpl::ActiveTcpListener::onAcceptWorker(
 }
 
 void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
-    Network::ConnectionSocketPtr&& socket) {
+    ConnectionHandlerImpl::ActiveTcpSocket& tcp_socket) {
   // Find matching filter chain.
-  const auto filter_chain = config_.filterChainManager().findFilterChain(*socket);
+  auto snapped_filter_chain_manager = active_filter_chain_manager_;
+  const auto filter_chain = snapped_filter_chain_manager->findFilterChain(*tcp_socket.socket_);
   if (filter_chain == nullptr) {
     ENVOY_LOG(debug, "closing connection: no matching filter chain found");
     stats_.no_filter_chain_match_.inc();
-    socket->close();
+    tcp_socket.socket_->close();
     return;
   }
 
   auto transport_socket = filter_chain->transportSocketFactory().createTransportSocket(nullptr);
-  ActiveTcpConnectionPtr active_connection(new ActiveTcpConnection(
-      *this,
-      parent_.dispatcher_.createServerConnection(std::move(socket), std::move(transport_socket)),
-      parent_.dispatcher_.timeSource()));
+  ActiveTcpConnectionPtr active_connection(
+      new ActiveTcpConnection(*this,
+                              parent_.dispatcher_.createServerConnection(
+                                  std::move(tcp_socket.socket_), std::move(transport_socket)),
+                              parent_.dispatcher_.timeSource()));
   active_connection->connection_->setBufferLimits(config_.perConnectionBufferLimitBytes());
 
   const bool empty_filter_chain = !config_.filterChainFactory().createNetworkFilterChain(
@@ -334,7 +367,8 @@ void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
   if (active_connection->connection_->state() != Network::Connection::State::Closed) {
     ENVOY_CONN_LOG(debug, "new connection", *active_connection->connection_);
     active_connection->connection_->addConnectionCallbacks(*active_connection);
-    active_connection->moveIntoList(std::move(active_connection), connections_);
+    auto& connections = tagged_connections_[active_connection->tag_];
+    active_connection->moveIntoList(std::move(active_connection), connections);
   }
 }
 

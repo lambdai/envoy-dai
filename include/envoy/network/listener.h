@@ -30,6 +30,12 @@ public:
   virtual FilterChainManager& filterChainManager() PURE;
 
   /**
+   * @return FilterChainManagerSharedPtr the factory for adding and searching through configured
+   *         filter chains.
+   */
+  virtual FilterChainManagerSharedPtr sharedFilterChainManager() PURE;
+
+  /**
    * @return FilterChainFactory& the factory for setting up the filter chain on a new
    *         connection.
    */
@@ -111,7 +117,7 @@ public:
 };
 
 /**
- * Callbacks invoked by a listener.
+ * Callbacks invoked by a tcp listener.
  */
 class ListenerCallbacks {
 public:
@@ -122,6 +128,13 @@ public:
    * @param socket supplies the socket that is moved into the callee.
    */
   virtual void onAccept(ConnectionSocketPtr&& socket) PURE;
+
+  /**
+   * Called when a new filter chain manager is updated.
+   *
+   * @param filter_chain_manager
+   */
+  virtual void onNewFilterChainManger(FilterChainManager& filter_chain_manager) PURE;
 };
 
 /**

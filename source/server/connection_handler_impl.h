@@ -72,6 +72,9 @@ public:
   void stopListeners() override;
   void disableListeners() override;
   void enableListeners() override;
+  bool updateListener(uint64_t listener_tag,
+                      std::function<bool(Network::ConnectionHandler::ActiveListener&)>
+                          listener_update_func) override;
   const std::string& statPrefix() override { return per_handler_stat_prefix_; }
 
   /**
@@ -115,6 +118,7 @@ private:
 
     // Network::ListenerCallbacks
     void onAccept(Network::ConnectionSocketPtr&& socket) override;
+    void onNewFilterChainManger(Network::FilterChainManager& filter_chain_manager) override;
 
     // ActiveListenerImplBase
     Network::Listener* listener() override { return listener_.get(); }
@@ -134,15 +138,21 @@ private:
     /**
      * Create a new connection from a socket accepted by the listener.
      */
-    void newConnection(Network::ConnectionSocketPtr&& socket);
+    void newConnection(ActiveTcpSocket& socket);
+
+    void
+    updateFilterChainManager(const Network::FilterChainManagerSharedPtr& new_filter_chain_manager);
 
     ConnectionHandlerImpl& parent_;
     Network::ListenerPtr listener_;
     const std::chrono::milliseconds listener_filters_timeout_;
     const bool continue_on_listener_filters_timeout_;
+    // Sockets going through listener filter chain
     std::list<ActiveTcpSocketPtr> sockets_;
-    std::list<ActiveTcpConnectionPtr> connections_;
-
+    // Connections completed listener filter chain and currently going through network filter chain
+    absl::flat_hash_map<int64_t, std::list<ActiveTcpConnectionPtr>> tagged_connections_;
+    // The filter chain manager which should serve the new connections.
+    Network::FilterChainManagerSharedPtr active_filter_chain_manager_;
     // The number of connections currently active on this listener. This is typically used for
     // connection balancing across per-handler listeners.
     std::atomic<uint64_t> num_listener_connections_{};
@@ -172,6 +182,7 @@ private:
     ActiveTcpListener& listener_;
     Network::ConnectionPtr connection_;
     Stats::TimespanPtr conn_length_;
+    int64_t tag_{0};
   };
 
   /**
@@ -185,7 +196,8 @@ private:
                     bool hand_off_restored_destination_connections)
         : listener_(listener), socket_(std::move(socket)),
           hand_off_restored_destination_connections_(hand_off_restored_destination_connections),
-          iter_(accept_filters_.end()) {
+          iter_(accept_filters_.end()),
+          snapped_filter_chain_manager_(listener.active_filter_chain_manager_) {
       listener_.stats_.downstream_pre_cx_active_.inc();
     }
     ~ActiveTcpSocket() override {
@@ -224,6 +236,7 @@ private:
     const bool hand_off_restored_destination_connections_;
     std::list<Network::ListenerFilterPtr> accept_filters_;
     std::list<Network::ListenerFilterPtr>::iterator iter_;
+    Network::FilterChainManagerSharedPtr snapped_filter_chain_manager_;
     Event::TimerPtr timer_;
   };
 

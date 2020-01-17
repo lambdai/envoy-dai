@@ -271,6 +271,7 @@ envoy_cc_library(
         ":drain_manager_lib",
         ":filter_chain_manager_lib",
         ":listener_manager_impl",
+        ":tag_generator_lib",
         ":transport_socket_config_lib",
         ":well_known_names_lib",
         "//include/envoy/server:active_udp_listener_config_interface",
@@ -333,9 +334,11 @@ envoy_cc_library(
         "//include/envoy/server:transport_socket_config_interface",
         "//source/common/common:empty_string",
         "//source/common/config:utility_lib",
+        "//source/common/init:manager_lib",
         "//source/common/network:cidr_range_lib",
         "//source/common/network:lc_trie_lib",
         "//source/server:configuration_lib",
+        "//source/server:tag_generator_lib",
         "@envoy_api//envoy/api/v2/listener:pkg_cc_proto",
     ],
 )
@@ -498,5 +501,18 @@ envoy_cc_library(
         ":well_known_names_lib",
         "//include/envoy/registry",
         "//include/envoy/server:active_udp_listener_config_interface",
+    ],
+)
+
+envoy_cc_library(
+    name = "tag_generator_lib",
+    srcs = ["tag_generator_batch_impl.cc"],
+    hdrs = [
+        "tag_generator.h",
+        "tag_generator_batch_impl.h",
+    ],
+    deps = [
+        "//source/common/protobuf:utility_lib",
+        "@envoy_api//envoy/api/v2/listener:pkg_cc_proto",
     ],
 )

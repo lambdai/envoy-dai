@@ -74,6 +74,11 @@ public:
    */
   virtual void stopListener(Network::ListenerConfig& listener,
                             std::function<void()> completion) PURE;
+
+  virtual void updateListener(
+      uint64_t listener_tag,
+      std::function<bool(Network::ConnectionHandler::ActiveListener&)> listener_update_func,
+      std::function<void(bool)> completion) PURE;
 };
 
 using WorkerPtr = std::unique_ptr<Worker>;

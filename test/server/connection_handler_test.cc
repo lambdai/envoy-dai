@@ -864,6 +864,30 @@ TEST_F(ConnectionHandlerTest, UdpListenerNoFilterThrowsException) {
   }
 }
 
+TEST_F(ConnectionHandlerTest, ActiveTcpSocketDestroyAcceptFilters) {
+  Network::MockListener* listener = new NiceMock<Network::MockListener>();
+  Network::ListenerCallbacks* listener_callbacks;
+  TestListener* test_listener = addListener(1, true, false, "test_listener");
+  EXPECT_CALL(dispatcher_, createListener_(_, _, _))
+      .WillOnce(
+          Invoke([&](Network::Socket&, Network::ListenerCallbacks& cb, bool) -> Network::Listener* {
+            listener_callbacks = &cb;
+            return listener;
+          }));
+  EXPECT_CALL(test_listener->socket_, localAddress());
+  handler_->addListener(*test_listener);
+
+  ConnectionHandlerImpl connection_handler_impl;
+  ActiveTcpListener tcp_listener(connection_handler_impl, test_listener);
+  Network::MockConnectionSocket* connection = new NiceMock<Network::MockConnectionSocket>();
+  Network::ConnectionSocketPtr connection_socket(connection);
+  ActiveTcpSocket tcp_socket(tcp_listener, std::move(connection_socket), false);
+  EXPECT_CALL(dispatcher, createServerConnection(_, _)).InvokeThat([]() {
+    EXPECT_TRUE(tcp_socket.accept_filter_.empty());
+  });
+  tcp_socket.onTimeout();
+}
+
 } // namespace
 } // namespace Server
 } // namespace Envoy

@@ -3483,6 +3483,34 @@ TEST_F(ListenerManagerImplWithRealFiltersTest, VerifyIgnoreExpirationWithCA) {
   EXPECT_NO_THROW(manager_->addOrUpdateListener(parseListenerFromV2Yaml(yaml), "", true));
 }
 
+TEST(ListenerManagerUtils, CompareListenerConfigWithSelf) {
+  envoy::api::v2::Listener c0;
+  ASSERT_TRUE(ListenerManagerImpl::isFilterChainOnlyUpdate(c0, c0));
+  c0.set_continue_on_listener_filters_timeout(true);
+  ASSERT_TRUE(ListenerManagerImpl::isFilterChainOnlyUpdate(c0, c0));
+  c0.add_filter_chains();
+  ASSERT_TRUE(ListenerManagerImpl::isFilterChainOnlyUpdate(c0, c0));
+}
+
+TEST(ListenerManagerUtils, CompareListenerConfigWithNetworkFilters) {
+  envoy::api::v2::Listener c0;
+  envoy::api::v2::Listener c1;
+  c0.add_filter_chains()->set_name("common");
+  c1.add_filter_chains()->set_name("common");
+  ASSERT_TRUE(ListenerManagerImpl::isFilterChainOnlyUpdate(c0, c1));
+  c0.add_filter_chains()->set_name("c0");
+  c1.add_filter_chains()->set_name("c1");
+  ASSERT_TRUE(ListenerManagerImpl::isFilterChainOnlyUpdate(c0, c1));
+}
+
+TEST(ListenerManagerUtils, CompareListenerConfigWithOtherFields) {
+  envoy::api::v2::Listener c0;
+  envoy::api::v2::Listener c1;
+  c0.set_continue_on_listener_filters_timeout(true);
+  c1.set_continue_on_listener_filters_timeout(false);
+  ASSERT_FALSE(ListenerManagerImpl::isFilterChainOnlyUpdate(c0, c1));
+}
+
 } // namespace
 } // namespace Server
 } // namespace Envoy

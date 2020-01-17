@@ -12,6 +12,7 @@
 #include "common/init/manager_impl.h"
 
 #include "server/filter_chain_manager_impl.h"
+#include "server/tag_generator_batch_impl.h"
 
 namespace Envoy {
 namespace Server {
@@ -64,6 +65,15 @@ public:
     return ret;
   }
 
+  /**
+   * Update this active listener with the new listener proto config.
+   * May throw EnvoyException.
+   *
+   * @param config the new listener config
+   * @return true if update succeeds
+   */
+  bool takeOver(const envoy::api::v2::Listener& config);
+
   Network::Address::InstanceConstSharedPtr address() const { return address_; }
   Network::Address::SocketType socketType() const { return socket_type_; }
   const envoy::api::v2::Listener& config() const { return config_; }
@@ -77,7 +87,10 @@ public:
   const std::string& versionInfo() const { return version_info_; }
 
   // Network::ListenerConfig
-  Network::FilterChainManager& filterChainManager() override { return filter_chain_manager_; }
+  Network::FilterChainManager& filterChainManager() override { return *filter_chain_manager_; }
+  Network::FilterChainManagerSharedPtr sharedFilterChainManager() override {
+    return fcm_tls_->getTyped<ThreadLocalFilterChainManagerHelper>().filter_chain_manager_;
+  }
   Network::FilterChainFactory& filterChainFactory() override { return *this; }
   Network::Socket& socket() override { return *socket_; }
   const Network::Socket& socket() const override { return *socket_; }
@@ -151,7 +164,7 @@ public:
 private:
   void addListenSocketOption(const Network::Socket::OptionConstSharedPtr& option) {
     ensureSocketOptions();
-    listen_socket_options_->emplace_back(std::move(option));
+    listen_socket_options_->emplace_back(option);
   }
   void addListenSocketOptions(const Network::Socket::OptionsSharedPtr& options) {
     ensureSocketOptions();
@@ -159,8 +172,13 @@ private:
   }
 
   ListenerManagerImpl& parent_;
+  TagGeneratorBatchImpl filter_chain_tag_generator_;
   Network::Address::InstanceConstSharedPtr address_;
-  FilterChainManagerImpl filter_chain_manager_;
+  // Active filter_chain_manager
+  std::shared_ptr<FilterChainManagerImpl> filter_chain_manager_;
+  // The pending filter chain managers in the order of insertion.
+  std::list<std::shared_ptr<ThreadLocalFilterChainManagerHelper>> pending_fcms_;
+  ThreadLocal::SlotPtr fcm_tls_;
 
   Network::Address::SocketType socket_type_;
   Network::SocketSharedPtr socket_;
