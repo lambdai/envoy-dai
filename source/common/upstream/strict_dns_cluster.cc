@@ -18,7 +18,8 @@ StrictDnsClusterImpl::StrictDnsClusterImpl(
       local_info_(factory_context.localInfo()), dns_resolver_(dns_resolver),
       dns_refresh_rate_ms_(
           std::chrono::milliseconds(PROTOBUF_GET_MS_OR_DEFAULT(cluster, dns_refresh_rate, 5000))),
-      respect_dns_ttl_(cluster.respect_dns_ttl()) {
+      respect_dns_ttl_(cluster.respect_dns_ttl()),
+      time_source_(factory_context.api().timeSource()) {
   failure_backoff_strategy_ =
       Config::Utility::prepareDnsRefreshStrategy<envoy::config::cluster::v3::Cluster>(
           cluster, dns_refresh_rate_ms_.count(), factory_context.random());
@@ -100,19 +101,19 @@ StrictDnsClusterImpl::ResolveTarget::~ResolveTarget() {
 void StrictDnsClusterImpl::ResolveTarget::startResolve() {
   ENVOY_LOG(trace, "starting async DNS resolution for {}", dns_address_);
   parent_.info_->stats().update_attempt_.inc();
-
+  auto start_time = parent_.time_source_.monotonicTime();
   active_query_ = parent_.dns_resolver_->resolve(
       dns_address_, parent_.dns_lookup_family_,
-      [this](Network::DnsResolver::ResolutionStatus status,
-             std::list<Network::DnsResponse>&& response) -> void {
+      [start_time, this](Network::DnsResolver::ResolutionStatus status,
+                         std::list<Network::DnsResponse>&& response) -> void {
         active_query_ = nullptr;
         ENVOY_LOG(trace, "async DNS resolution complete for {}", dns_address_);
-
+        auto end_time = parent_.time_source_.monotonicTime();
         std::chrono::milliseconds final_refresh_rate = parent_.dns_refresh_rate_ms_;
-
+        auto duration = end_time - start_time;
         if (status == Network::DnsResolver::ResolutionStatus::Success) {
           parent_.info_->stats().update_success_.inc();
-
+          parent_.info_->stats().dns_resolve_suc_ms_.recordValue(duration.count());
           std::unordered_map<std::string, HostSharedPtr> updated_hosts;
           HostVector new_hosts;
           std::chrono::seconds ttl_refresh_rate = std::chrono::seconds::max();
@@ -162,12 +163,14 @@ void StrictDnsClusterImpl::ResolveTarget::startResolve() {
                     final_refresh_rate.count());
         } else {
           parent_.info_->stats().update_failure_.inc();
+          parent_.info_->stats().dns_resolve_fail_ms_.recordValue(duration.count());
 
           final_refresh_rate =
               std::chrono::milliseconds(parent_.failure_backoff_strategy_->nextBackOffMs());
           ENVOY_LOG(debug, "DNS refresh rate reset for {}, (failure) refresh rate {} ms",
                     dns_address_, final_refresh_rate.count());
         }
+        parent_.info_->stats().dns_resolve_all_ms_.recordValue(duration.count());
 
         // If there is an initialize callback, fire it now. Note that if the cluster refers to
         // multiple DNS names, this will return initialized after a single DNS resolution
