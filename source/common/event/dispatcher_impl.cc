@@ -71,6 +71,8 @@ void DispatcherImpl::clearDeferredDeleteList() {
 
   to_delete->clear();
   deferred_deleting_ = false;
+
+  ENVOY_LOG(trace, "deferred deletion complete, {} deleted", num_to_delete);
 }
 
 Network::ConnectionPtr
