@@ -34,6 +34,12 @@ ConnPoolImpl::~ConnPoolImpl() {
     delayed_clients_.front()->codec_client_->close();
   }
 
+  if (!ready_clients_.empty() || !busy_clients_.empty()) {
+    ENVOY_LOG(debug,
+              "{} ready clients and {} busy clients are deferred deleted with connection pool {}",
+              ready_clients_.size(), busy_clients_.size(), static_cast<void*>(this));
+  }
+
   while (!ready_clients_.empty()) {
     ready_clients_.front()->codec_client_->close();
   }
