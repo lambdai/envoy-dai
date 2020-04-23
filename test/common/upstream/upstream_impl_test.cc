@@ -203,7 +203,7 @@ TEST_F(StrictDnsClusterImplTest, ZeroHostsIsInializedImmediately) {
       - lb_endpoints:
   )EOF";
 
-  envoy::config::cluster::v3::Cluster cluster_config = parseClusterFromV2Yaml(yaml);
+  envoy::api::v2::Cluster cluster_config = parseClusterFromV2Yaml(yaml);
   Envoy::Stats::ScopePtr scope = stats_.createScope(fmt::format(
       "cluster.{}.", cluster_config.alt_stat_name().empty() ? cluster_config.name()
                                                             : cluster_config.alt_stat_name()));
