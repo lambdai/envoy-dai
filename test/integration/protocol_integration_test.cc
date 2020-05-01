@@ -459,7 +459,8 @@ TEST_P(DownstreamProtocolIntegrationTest, RetryHostPredicateFilter) {
       1024);
 
   // Note how we're expecting each upstream request to hit the same upstream.
-  auto upstream_idx = waitForNextUpstreamRequest({0, 1});
+  // We waited default timeout serveral times. We cannot use up all the quota on the first upstream.
+  auto upstream_idx = waitForNextUpstreamRequest({0, 1}, TestUtility::DefaultTimeout / 10);
   ASSERT_TRUE(upstream_idx.has_value());
   upstream_request_->encodeHeaders(Http::TestResponseHeaderMapImpl{{":status", "503"}}, false);
 
