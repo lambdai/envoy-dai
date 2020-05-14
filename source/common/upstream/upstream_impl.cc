@@ -971,15 +971,28 @@ void ClusterImplBase::onPreInitComplete() {
 }
 
 void ClusterImplBase::onInitDone() {
+  ENVOY_LOG_MISC(
+      debug, "lambdai: onInitDone, has heatch checker: {}, pending_initialize_health_checks_={} ",
+      health_checker_ != nullptr, pending_initialize_health_checks_);
   if (health_checker_ && pending_initialize_health_checks_ == 0) {
     for (auto& host_set : prioritySet().hostSetsPerPriority()) {
       pending_initialize_health_checks_ += host_set->hosts().size();
     }
+    ENVOY_LOG_MISC(debug, "lambdai: onInitDone, add {} hosts to health checker",
+                   pending_initialize_health_checks_);
 
     // TODO(mattklein123): Remove this callback when done.
-    health_checker_->addHostCheckCompleteCb([this](HostSharedPtr, HealthTransition) -> void {
-      if (pending_initialize_health_checks_ > 0 && --pending_initialize_health_checks_ == 0) {
-        finishInitialization();
+    health_checker_->addHostCheckCompleteCb([this](HostSharedPtr host,
+                                                   HealthTransition changed_state) -> void {
+      ENVOY_LOG_MISC(debug,
+                     "lambdai: host check complete, host {} transition {}, "
+                     "is health {}, pending_initialize_health_checks_ {} ",
+                     static_cast<void*>(host.get()), static_cast<int>(changed_state), host->health() == Host::Health::Healthy,
+                     pending_initialize_health_checks_);
+      if (changed_state == HealthTransition::Changed && host->health() == Host::Health::Healthy) {
+        if (pending_initialize_health_checks_ > 0 && --pending_initialize_health_checks_ == 0) {
+          finishInitialization();
+        }
       }
     });
   }
