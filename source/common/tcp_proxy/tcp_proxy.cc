@@ -550,9 +550,9 @@ void Filter::onPoolReady(Tcp::ConnectionPool::ConnectionDataPtr&& conn_data,
   read_callbacks_->connection().streamInfo().setUpstreamFilterState(
       latched_data->connection().streamInfo().filterState());
   // Warning: bpf will bypass network upstream filter
-  setupBpf(downstreamConnection()->fd(), read_callbacks_->connection().fd());
+  setupBpf(downstreamConnection()->fd(), latched_data->connection().fd());
   ENVOY_CONN_LOG(debug, "bpf: downstream fd {}, upstream fd {}", read_callbacks_->connection(),
-                 downstreamConnection()->fd(), read_callbacks_->connection().fd());
+                 downstreamConnection()->fd(), latched_data->connection().fd());
 }
 
 void Filter::onPoolFailure(ConnectionPool::PoolFailureReason failure, absl::string_view,
