@@ -19,7 +19,7 @@ struct StreamBuffer {
 /**
  * Interface used to obtain read buffers.
  */
-class ReadBufferSource {
+class ReadBufferSource : NonCopyable {
 public:
   virtual ~ReadBufferSource() = default;
 
@@ -32,7 +32,7 @@ public:
 /**
  * Interface used to obtain write buffers.
  */
-class WriteBufferSource {
+class WriteBufferSource : NonCopyable {
 public:
   virtual ~WriteBufferSource() = default;
 
