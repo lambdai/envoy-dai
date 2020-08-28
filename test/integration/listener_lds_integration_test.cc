@@ -84,6 +84,8 @@ protected:
           bootstrap.mutable_dynamic_resources()->mutable_lds_config()->mutable_api_config_source();
       lds_api_config_source->set_api_type(envoy::config::core::v3::ApiConfigSource::GRPC);
       lds_api_config_source->set_transport_api_version(envoy::config::core::v3::ApiVersion::V3);
+      bootstrap.mutable_dynamic_resources()->mutable_lds_config()->set_resource_api_version(envoy::config::core::v3::ApiVersion::V3);
+
       envoy::config::core::v3::GrpcService* grpc_service =
           lds_api_config_source->add_grpc_services();
       setGrpcService(*grpc_service, "lds_cluster", getLdsFakeUpstream().localAddress());
