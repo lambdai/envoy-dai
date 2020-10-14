@@ -209,6 +209,7 @@ EXTENSIONS = {
     #
     "envoy.upstreams.http.http":                        "//source/extensions/upstreams/http/http:config",
     "envoy.upstreams.http.tcp":                         "//source/extensions/upstreams/http/tcp:config",
+    "envoy.upstreams.http.cluster_sensitive":           "//source/extensions/upstreams/http/cluster_sensitive:config",
 
     #
     # Watchdog actions

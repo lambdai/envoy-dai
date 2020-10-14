@@ -76,7 +76,7 @@ public:
       const ProtobufWkt::Struct& data_struct = filter_metadata->second;
       const auto& fields = data_struct.fields();
       if (auto iter = fields.find("original_port"); iter != fields.end()) {
-        if (iter->second.kind_case() == google::protobuf::Value::kStringValue) {
+        if (iter->second.kind_case() == ProtobufWkt::Value::kStringValue) {
           dup->setCopy(Envoy::Http::LowerCaseString("X-istio-original-port"),
                        iter->second.string_value());
         }

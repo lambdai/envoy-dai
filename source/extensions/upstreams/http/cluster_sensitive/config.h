@@ -1,6 +1,6 @@
 #pragma once
 
-#include "envoy/extensions/upstreams/http/http/v3/http_connection_pool.pb.h"
+#include "envoy/extensions/upstreams/http/cluster_sensitive/v3/http_connection_pool.pb.h"
 #include "envoy/registry/registry.h"
 #include "envoy/router/router.h"
 
@@ -27,7 +27,7 @@ public:
 
   ProtobufTypes::MessagePtr createEmptyConfigProto() override {
     return std::make_unique<
-        envoy::extensions::upstreams::http::http::v3::HttpConnectionPoolProto>();
+        envoy::extensions::upstreams::http::cluster_sensitive::v3::HttpConnectionPoolProto>();
   }
 };
 

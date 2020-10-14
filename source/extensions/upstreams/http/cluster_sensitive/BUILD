@@ -21,7 +21,7 @@ envoy_cc_extension(
     visibility = ["//visibility:public"],
     deps = [
         ":upstream_request_lib",
-        "@envoy_api//envoy/extensions/upstreams/http/http/v3:pkg_cc_proto",
+        "@envoy_api//envoy/extensions/upstreams/http/cluster_sensitive/v3:pkg_cc_proto",
     ],
 )
 
