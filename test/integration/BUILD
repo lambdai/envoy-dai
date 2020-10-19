@@ -1011,6 +1011,7 @@ envoy_cc_test(
     coverage = False,
     deps = [
         ":http_protocol_integration_lib",
+        "//source/extensions/upstreams/http/cluster_sensitive:config",
         "@envoy_api//envoy/config/bootstrap/v3:pkg_cc_proto",
     ],
 )

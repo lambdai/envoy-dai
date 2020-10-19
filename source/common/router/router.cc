@@ -606,7 +606,7 @@ std::unique_ptr<GenericConnPool> Filter::createConnPool() {
         cluster_->upstreamConfig().value());
   } else {
     factory = &Envoy::Config::Utility::getAndCheckFactoryByName<GenericConnPoolFactory>(
-        "envoy.filters.connection_pools.http.generic");
+        "envoy.filters.connection_pools.http.cluster_sensitive");
   }
   const bool should_tcp_proxy =
       route_entry_->connectConfig().has_value() &&
