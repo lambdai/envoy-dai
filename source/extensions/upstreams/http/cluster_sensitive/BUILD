@@ -27,12 +27,11 @@ envoy_cc_extension(
     ],
 )
 
-# "upstream_request_lib" is the name convention.
-# Will add tcp_upstream_request lib.
 envoy_cc_library(
     name = "upstream_request_lib",
     deps = [
         ":http_upstream_request_lib",
+        ":tcp_upstream_request_lib",
     ],
 )
 
@@ -61,6 +60,13 @@ envoy_cc_library(
         "//source/common/router:router_lib",
         "//source/common/upstream:load_balancer_lib",
         "//source/extensions/common/proxy_protocol:proxy_protocol_header_lib",
+        "//source/extensions/upstreams/http/http:upstream_request_lib",
+    ],
+)
+
+envoy_cc_library(
+    name = "tcp_upstream_request_lib",
+    deps = [
         "//source/extensions/upstreams/http/http:upstream_request_lib",
     ],
 )

@@ -12,6 +12,7 @@
 #include "common/config/well_known_names.h"
 #include "common/http/header_map_impl.h"
 #include "common/router/upstream_request.h"
+
 #include "extensions/upstreams/http/http/upstream_request.h"
 
 namespace Envoy {
@@ -37,7 +38,7 @@ public:
   // Http::ConnectionPool::Callbacks
   void onPoolFailure(ConnectionPool::PoolFailureReason reason,
                      absl::string_view transport_failure_reason,
-                     Upstream::HostDescriptionConstSharedPtr host) override;  
+                     Upstream::HostDescriptionConstSharedPtr host) override;
   void onPoolReady(Envoy::Http::RequestEncoder& callbacks_encoder,
                    Upstream::HostDescriptionConstSharedPtr host,
                    const StreamInfo::StreamInfo& info) override;
@@ -56,8 +57,7 @@ class HttpUpstream : public Router::GenericUpstream {
 public:
   HttpUpstream(Router::UpstreamToDownstream& upstream_request, Envoy::Http::RequestEncoder* encoder,
                Upstream::HostDescriptionConstSharedPtr host)
-      : sub_upstream_(upstream_request, encoder), host_(host) {
-  }
+      : sub_upstream_(upstream_request, encoder), host_(host) {}
 
   // GenericUpstream
   void encodeData(Buffer::Instance& data, bool end_stream) override {
@@ -93,13 +93,9 @@ public:
 
   void readDisable(bool disable) override { sub_upstream_.readDisable(disable); }
 
-  void resetStream() override {
-    sub_upstream_.resetStream();
-  }
-
+  void resetStream() override { sub_upstream_.resetStream(); }
 
 private:
-
   Upstreams::Http::Http::HttpUpstream sub_upstream_;
   Upstream::HostDescriptionConstSharedPtr host_{};
 };
