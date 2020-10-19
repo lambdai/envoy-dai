@@ -27,11 +27,19 @@ envoy_cc_extension(
 
 envoy_cc_library(
     name = "upstream_request_lib",
+   
+    deps = [
+        ":http_upstream_request_lib",
+    ]
+)
+
+envoy_cc_library(
+    name = "http_upstream_request_lib",
     srcs = [
-        "upstream_request.cc",
+        "http_upstream_request.cc",
     ],
     hdrs = [
-        "upstream_request.h",
+        "http_upstream_request.h",
     ],
     deps = [
         "//include/envoy/http:codes_interface",

@@ -16,7 +16,7 @@ namespace ClusterSensitive {
 class ClusterSensitiveGenericConnPoolFactory : public Router::GenericConnPoolFactory {
 public:
   std::string name() const override {
-    return "envoy.filters.connection_pools.http.cluster_senstive";
+    return "envoy.filters.connection_pools.http.cluster_sensitive";
   }
   std::string category() const override { return "envoy.upstreams"; }
   Router::GenericConnPoolPtr

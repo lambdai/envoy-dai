@@ -74,7 +74,8 @@ public:
     dup->remove(Envoy::Http::LowerCaseString("X-istio-original-port"));
     if (auto filter_metadata = host_->cluster().metadata().filter_metadata().find("istio");
         filter_metadata != host_->cluster().metadata().filter_metadata().end()) {
-      ENVOY_LOG_MISC(warn, "lambdai: find filter_metadata from {}", host_->cluster().metadata().DebugString());
+      ENVOY_LOG_MISC(warn, "lambdai: find filter_metadata from {}",
+                     host_->cluster().metadata().DebugString());
       const ProtobufWkt::Struct& data_struct = filter_metadata->second;
       const auto& fields = data_struct.fields();
       if (auto iter = fields.find("original_port"); iter != fields.end()) {

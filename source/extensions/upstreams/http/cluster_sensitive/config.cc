@@ -1,6 +1,6 @@
 #include "extensions/upstreams/http/cluster_sensitive/config.h"
 
-#include "extensions/upstreams/http/cluster_sensitive/upstream_request.h"
+#include "extensions/upstreams/http/cluster_sensitive/http_upstream_request.h"
 
 namespace Envoy {
 namespace Extensions {
