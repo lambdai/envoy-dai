@@ -21,16 +21,19 @@ envoy_cc_extension(
     visibility = ["//visibility:public"],
     deps = [
         ":upstream_request_lib",
+        "//source/extensions/upstreams/http/http:upstream_request_lib",
+        "//source/extensions/upstreams/http/tcp:upstream_request_lib",
         "@envoy_api//envoy/extensions/upstreams/http/cluster_sensitive/v3:pkg_cc_proto",
     ],
 )
 
+# "upstream_request_lib" is the name convention.
+# Will add tcp_upstream_request lib.
 envoy_cc_library(
     name = "upstream_request_lib",
-   
     deps = [
         ":http_upstream_request_lib",
-    ]
+    ],
 )
 
 envoy_cc_library(
@@ -58,5 +61,6 @@ envoy_cc_library(
         "//source/common/router:router_lib",
         "//source/common/upstream:load_balancer_lib",
         "//source/extensions/common/proxy_protocol:proxy_protocol_header_lib",
+        "//source/extensions/upstreams/http/http:upstream_request_lib",
     ],
 )

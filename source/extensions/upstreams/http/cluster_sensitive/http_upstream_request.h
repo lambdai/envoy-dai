@@ -12,6 +12,7 @@
 #include "common/config/well_known_names.h"
 #include "common/http/header_map_impl.h"
 #include "common/router/upstream_request.h"
+#include "extensions/upstreams/http/http/upstream_request.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -36,7 +37,7 @@ public:
   // Http::ConnectionPool::Callbacks
   void onPoolFailure(ConnectionPool::PoolFailureReason reason,
                      absl::string_view transport_failure_reason,
-                     Upstream::HostDescriptionConstSharedPtr host) override;
+                     Upstream::HostDescriptionConstSharedPtr host) override;  
   void onPoolReady(Envoy::Http::RequestEncoder& callbacks_encoder,
                    Upstream::HostDescriptionConstSharedPtr host,
                    const StreamInfo::StreamInfo& info) override;
@@ -51,20 +52,19 @@ private:
   Router::GenericConnectionPoolCallbacks* callbacks_{};
 };
 
-class HttpUpstream : public Router::GenericUpstream, public Envoy::Http::StreamCallbacks {
+class HttpUpstream : public Router::GenericUpstream {
 public:
   HttpUpstream(Router::UpstreamToDownstream& upstream_request, Envoy::Http::RequestEncoder* encoder,
                Upstream::HostDescriptionConstSharedPtr host)
-      : upstream_request_(upstream_request), request_encoder_(encoder), host_(host) {
-    request_encoder_->getStream().addCallbacks(*this);
+      : sub_upstream_(upstream_request, encoder), host_(host) {
   }
 
   // GenericUpstream
   void encodeData(Buffer::Instance& data, bool end_stream) override {
-    request_encoder_->encodeData(data, end_stream);
+    sub_upstream_.encodeData(data, end_stream);
   }
   void encodeMetadata(const Envoy::Http::MetadataMapVector& metadata_map_vector) override {
-    request_encoder_->encodeMetadata(metadata_map_vector);
+    sub_upstream_.encodeMetadata(metadata_map_vector);
   }
   void encodeHeaders(const Envoy::Http::RequestHeaderMap& headers, bool end_stream) override {
     auto dup = Envoy::Http::RequestHeaderMapImpl::create();
@@ -85,36 +85,22 @@ public:
         }
       }
     }
-    request_encoder_->encodeHeaders(*dup, end_stream);
+    sub_upstream_.encodeHeaders(*dup, end_stream);
   }
   void encodeTrailers(const Envoy::Http::RequestTrailerMap& trailers) override {
-    request_encoder_->encodeTrailers(trailers);
+    sub_upstream_.encodeTrailers(trailers);
   }
 
-  void readDisable(bool disable) override { request_encoder_->getStream().readDisable(disable); }
+  void readDisable(bool disable) override { sub_upstream_.readDisable(disable); }
 
   void resetStream() override {
-    request_encoder_->getStream().removeCallbacks(*this);
-    request_encoder_->getStream().resetStream(Envoy::Http::StreamResetReason::LocalReset);
+    sub_upstream_.resetStream();
   }
 
-  // Http::StreamCallbacks
-  void onResetStream(Envoy::Http::StreamResetReason reason,
-                     absl::string_view transport_failure_reason) override {
-    upstream_request_.onResetStream(reason, transport_failure_reason);
-  }
-
-  void onAboveWriteBufferHighWatermark() override {
-    upstream_request_.onAboveWriteBufferHighWatermark();
-  }
-
-  void onBelowWriteBufferLowWatermark() override {
-    upstream_request_.onBelowWriteBufferLowWatermark();
-  }
 
 private:
-  Router::UpstreamToDownstream& upstream_request_;
-  Envoy::Http::RequestEncoder* request_encoder_{};
+
+  Upstreams::Http::Http::HttpUpstream sub_upstream_;
   Upstream::HostDescriptionConstSharedPtr host_{};
 };
 
