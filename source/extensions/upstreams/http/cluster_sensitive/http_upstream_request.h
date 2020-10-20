@@ -67,7 +67,7 @@ public:
   void encodeMetadata(const Envoy::Http::MetadataMapVector& metadata_map_vector) override {
     sub_upstream_.encodeMetadata(metadata_map_vector);
   }
-  
+
   void encodeHeaders(const Envoy::Http::RequestHeaderMap& headers, bool end_stream) override {
     auto dup = Envoy::Http::RequestHeaderMapImpl::create();
     Envoy::Http::HeaderMapImpl::copyFrom(*dup, headers);
