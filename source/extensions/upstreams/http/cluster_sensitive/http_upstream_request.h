@@ -63,9 +63,11 @@ public:
   void encodeData(Buffer::Instance& data, bool end_stream) override {
     sub_upstream_.encodeData(data, end_stream);
   }
+
   void encodeMetadata(const Envoy::Http::MetadataMapVector& metadata_map_vector) override {
     sub_upstream_.encodeMetadata(metadata_map_vector);
   }
+  
   void encodeHeaders(const Envoy::Http::RequestHeaderMap& headers, bool end_stream) override {
     auto dup = Envoy::Http::RequestHeaderMapImpl::create();
     Envoy::Http::HeaderMapImpl::copyFrom(*dup, headers);
@@ -87,6 +89,7 @@ public:
     }
     sub_upstream_.encodeHeaders(*dup, end_stream);
   }
+
   void encodeTrailers(const Envoy::Http::RequestTrailerMap& trailers) override {
     sub_upstream_.encodeTrailers(trailers);
   }
