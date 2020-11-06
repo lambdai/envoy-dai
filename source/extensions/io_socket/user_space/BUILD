@@ -60,3 +60,16 @@ envoy_cc_library(
         "//source/common/network:default_socket_interface_lib",
     ],
 )
+
+envoy_cc_library(
+    name = "b_factory",
+    srcs = [
+        "b_factory.cc",
+    ],
+    hdrs = [
+        "b_factory.h",
+    ],
+    deps = [
+        "//source/extensions/io_socket:client_connection_factory",
+    ],
+)
