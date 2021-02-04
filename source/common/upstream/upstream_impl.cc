@@ -919,10 +919,32 @@ ClusterImplBase::ClusterImplBase(
 
   auto socket_matcher = std::make_unique<TransportSocketMatcherImpl>(
       cluster.transport_socket_matches(), factory_context, socket_factory, *stats_scope);
-  info_ = std::make_unique<ClusterInfoImpl>(cluster, factory_context.clusterManager().bindConfig(),
-                                            runtime, std::move(socket_matcher),
-                                            std::move(stats_scope), added_via_api, factory_context);
-
+  auto& dispatcher = factory_context.dispatcher();
+  info_ = std::shared_ptr<const ClusterInfoImpl>(
+      new ClusterInfoImpl(cluster, factory_context.clusterManager().bindConfig(), runtime,
+                          std::move(socket_matcher), std::move(stats_scope), added_via_api,
+                          factory_context),
+      [&dispatcher](const ClusterInfoImpl* self) {
+        FANCY_LOG(debug, "lambdai: schedule destroy cluster info {} on this thread", self->name());
+        if (!dispatcher.tryPost([self]() {
+              // TODO(lambdai): Yet there is risk that master dispatcher receives the function but
+              // doesn't execute during the shutdown. We can either 1) Introduce folly::function
+              // which supports with unique_ptr capture and destroy cluster info by RAII, or 2) Call
+              // run post callback in master thread after no worker post back.
+              FANCY_LOG(debug,
+                        "lambdai: execute destroy cluster info {} on this thread. Master thread is "
+                        "expected.",
+                        self->name());
+              delete self;
+            })) {
+          FANCY_LOG(debug,
+                    "lambdai: cannot post. Has the master thread exited? Executing destroy cluster "
+                    "info {} on this thread.",
+                    self->name());
+          delete self;
+        }
+      });
+  
   if ((info_->features() & ClusterInfoImpl::Features::USE_ALPN) &&
       !raw_factory_pointer->supportsAlpn()) {
     throw EnvoyException(

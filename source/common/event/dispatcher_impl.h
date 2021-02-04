@@ -86,6 +86,7 @@ public:
   void exit() override;
   SignalEventPtr listenForSignal(signal_t signal_num, SignalCb cb) override;
   void post(std::function<void()> callback) override;
+  bool tryPost(std::function<void()> callback) override;
   void run(RunType type) override;
   Buffer::WatermarkFactory& getWatermarkFactory() override { return *buffer_factory_; }
   void pushTrackedObject(const ScopeTrackedObject* object) override;
@@ -136,7 +137,7 @@ private:
   bool isThreadSafe() const override {
     return run_tid_.isEmpty() || run_tid_ == api_.threadFactory().currentThreadId();
   }
-
+  std::atomic<bool> exited_{};
   const std::string name_;
   Api::Api& api_;
   std::string stats_prefix_;

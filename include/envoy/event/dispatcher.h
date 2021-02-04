@@ -261,6 +261,11 @@ public:
   virtual void post(PostCb callback) PURE;
 
   /**
+   * Similar to `post()` but return false if the dispatcher rejects.
+   */
+  virtual bool tryPost(PostCb callback) PURE;
+
+  /**
    * Runs the event loop. This will not return until exit() is called either from within a callback
    * or from a different thread.
    * @param type specifies whether to run in blocking mode (run() will not return until exit() is
