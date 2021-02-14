@@ -844,6 +844,11 @@ ThreadLocalCluster* ClusterManagerImpl::getThreadLocalCluster(absl::string_view 
   }
 }
 
+std::shared_ptr<FutureCluster>
+ClusterManagerImpl::futureThreadLocalCluster(absl::string_view cluster_name) {
+  return std::make_shared<ReadyFutureCluster>(cluster_name, *this);
+}
+
 void ClusterManagerImpl::maybePreconnect(
     ThreadLocalClusterManagerImpl::ClusterEntry& cluster_entry,
     const ClusterConnectivityState& state,
@@ -1539,6 +1544,10 @@ ProdClusterManagerFactory::createCds(const envoy::config::core::v3::ConfigSource
                                      ClusterManager& cm) {
   // TODO(htuch): Differentiate static vs. dynamic validation visitors.
   return CdsApiImpl::create(cds_config, cm, stats_, validation_context_.dynamicValidationVisitor());
+}
+
+ThreadLocalCluster* FutureCluster::getThreadLocalCluster() {
+  return cluster_manager_.getThreadLocalCluster(cluster_name_);
 }
 
 } // namespace Upstream

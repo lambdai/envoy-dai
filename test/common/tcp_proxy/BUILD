@@ -33,6 +33,7 @@ envoy_cc_test(
         "//test/mocks/server:instance_mocks",
         "//test/mocks/ssl:ssl_mocks",
         "//test/mocks/stream_info:stream_info_mocks",
+        "//test/mocks/upstream:cluster_manager_mocks",
         "//test/mocks/upstream:host_mocks",
         "//test/test_common:test_runtime_lib",
         "@envoy_api//envoy/config/accesslog/v3:pkg_cc_proto",
@@ -50,5 +51,6 @@ envoy_cc_test(
         "//source/common/tcp_proxy",
         "//test/mocks/http:http_mocks",
         "//test/mocks/tcp:tcp_mocks",
+        "//test/mocks/upstream:cluster_manager_mocks",
     ],
 )

@@ -387,9 +387,21 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
 
   const std::string& cluster_name = route_ ? route_->clusterName() : EMPTY_STRING;
 
-  Upstream::ThreadLocalCluster* thread_local_cluster =
-      cluster_manager_.getThreadLocalCluster(cluster_name);
+  std::shared_ptr<Upstream::FutureCluster> future =
+      cluster_manager_.futureThreadLocalCluster(cluster_name);
+  if (future->isReady()) {
+    onClusterReady(std::move(future));
+  } else {
+    // TODO(lambdai): Disable read until upstream cluster is ready.
+    // fire the await.
+    ASSERT(false, "NOT_IMPLEMENTED_YET");
+  }
+  return Network::FilterStatus::StopIteration;
+}
 
+void Filter::onClusterReady(std::shared_ptr<Upstream::FutureCluster> future) {
+  Upstream::ThreadLocalCluster* thread_local_cluster = future->getThreadLocalCluster();
+  absl::string_view cluster_name = future->getClusterName();
   if (thread_local_cluster) {
     ENVOY_CONN_LOG(debug, "Creating connection to cluster {}", read_callbacks_->connection(),
                    cluster_name);
@@ -398,7 +410,7 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
     config_->stats().downstream_cx_no_route_.inc();
     getStreamInfo().setResponseFlag(StreamInfo::ResponseFlag::NoRouteFound);
     onInitFailure(UpstreamFailureReason::NoRoute);
-    return Network::FilterStatus::StopIteration;
+    return;
   }
 
   Upstream::ClusterInfoConstSharedPtr cluster = thread_local_cluster->info();
@@ -410,7 +422,7 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
     getStreamInfo().setResponseFlag(StreamInfo::ResponseFlag::UpstreamOverflow);
     cluster->stats().upstream_cx_overflow_.inc();
     onInitFailure(UpstreamFailureReason::ResourceLimitExceeded);
-    return Network::FilterStatus::StopIteration;
+    return;
   }
 
   const uint32_t max_connect_attempts = config_->maxConnectAttempts();
@@ -418,7 +430,7 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
     getStreamInfo().setResponseFlag(StreamInfo::ResponseFlag::UpstreamRetryLimitExceeded);
     cluster->stats().upstream_cx_connect_attempts_exceeded_.inc();
     onInitFailure(UpstreamFailureReason::ConnectFailed);
-    return Network::FilterStatus::StopIteration;
+    return;
   }
 
   if (downstreamConnection()) {
@@ -445,7 +457,6 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
     getStreamInfo().setResponseFlag(StreamInfo::ResponseFlag::NoHealthyUpstream);
     onInitFailure(UpstreamFailureReason::NoHealthyUpstream);
   }
-  return Network::FilterStatus::StopIteration;
 }
 
 bool Filter::maybeTunnel(Upstream::ThreadLocalCluster& cluster) {

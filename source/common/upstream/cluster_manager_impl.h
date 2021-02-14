@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "common/common/assert.h"
 #include "envoy/api/api.h"
 #include "envoy/common/random_generator.h"
 #include "envoy/config/bootstrap/v3/bootstrap.pb.h"
@@ -253,6 +254,8 @@ public:
 
   const ClusterSet& primaryClusters() override { return primary_clusters_; }
   ThreadLocalCluster* getThreadLocalCluster(absl::string_view cluster) override;
+
+  std::shared_ptr<FutureCluster> futureThreadLocalCluster(absl::string_view cluster_name) override;
 
   bool removeCluster(const std::string& cluster) override;
   void shutdown() override {
@@ -604,6 +607,17 @@ private:
 
   Config::SubscriptionFactoryImpl subscription_factory_;
   ClusterSet primary_clusters_;
+};
+
+class ReadyFutureCluster : public FutureCluster {
+public:
+  ReadyFutureCluster(absl::string_view cluster_name, ClusterManager& cluster_manager)
+      : FutureCluster(cluster_name, cluster_manager) {}
+  bool isReady() override { return true; }
+  std::unique_ptr<Handle> await(Event::Dispatcher&, ResumeCb) override {
+    // User should not call await since ReadyFutureCluster is always ready.
+    NOT_IMPLEMENTED_GCOVR_EXCL_LINE;
+  }
 };
 
 } // namespace Upstream
