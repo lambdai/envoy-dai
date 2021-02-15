@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "common/common/assert.h"
 #include "envoy/api/api.h"
 #include "envoy/common/random_generator.h"
 #include "envoy/config/bootstrap/v3/bootstrap.pb.h"
@@ -26,6 +25,7 @@
 #include "envoy/thread_local/thread_local.h"
 #include "envoy/upstream/cluster_manager.h"
 
+#include "common/common/assert.h"
 #include "common/common/cleanup.h"
 #include "common/config/grpc_mux_impl.h"
 #include "common/config/subscription_factory_impl.h"
@@ -618,6 +618,29 @@ public:
     // User should not call await since ReadyFutureCluster is always ready.
     NOT_IMPLEMENTED_GCOVR_EXCL_LINE;
   }
+};
+
+// This future cluster readiness is controlled by the not-owning flag. It can be used by emulate
+// never ready future cluster or eventually ready cluster.
+class DelayedFutureCluster : public FutureCluster {
+public:
+  DelayedFutureCluster(absl::string_view cluster_name, ClusterManager& cluster_manager,
+                       bool& ready_flag)
+      : FutureCluster(cluster_name, cluster_manager), ready_(ready_flag) {}
+  bool isReady() override { return ready_; }
+  std::unique_ptr<Handle> await(Event::Dispatcher&, ResumeCb cb) override;
+
+private:
+  class DumbHandle;
+  friend class DumbHandle;
+  // The callback which is optional invoked on the target dispatcher.
+  ResumeCb cb_;
+  // The flag if the future cluster is ready. This flag should only be switched from false to true.
+  bool& ready_;
+  // The flag if the ResumeCb is valid. This flag should only be switch false to true by handler.
+  // There is no mutex protecting this flag so the mutation must be executed on the same thread
+  // where the callback is invoked.
+  bool is_canceled_{false};
 };
 
 } // namespace Upstream

@@ -1550,5 +1550,24 @@ ThreadLocalCluster* FutureCluster::getThreadLocalCluster() {
   return cluster_manager_.getThreadLocalCluster(cluster_name_);
 }
 
+class DelayedFutureCluster::DumbHandle : public FutureCluster::Handle {
+public:
+  DumbHandle(DelayedFutureCluster& future) : future_(future) { ASSERT(!future_.is_canceled_); }
+  void cancel() { future_.is_canceled_ = true; }
+
+private:
+  DelayedFutureCluster& future_;
+};
+
+std::unique_ptr<FutureCluster::Handle> DelayedFutureCluster::await(Event::Dispatcher&,
+                                                                   ResumeCb cb) {
+  cb_ = [this, original_cb = std::move(cb)]() {
+    if (!is_canceled_) {
+      original_cb();
+    }
+  };
+  return std::make_unique<DumbHandle>(*this);
+}
+
 } // namespace Upstream
 } // namespace Envoy
