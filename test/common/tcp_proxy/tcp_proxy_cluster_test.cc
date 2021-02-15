@@ -11,6 +11,7 @@
 #include "envoy/extensions/filters/network/tcp_proxy/v3/tcp_proxy.pb.validate.h"
 #include "envoy/extensions/upstreams/http/generic/v3/generic_connection_pool.pb.h"
 #include "envoy/extensions/upstreams/tcp/generic/v3/generic_connection_pool.pb.h"
+#include "envoy/upstream/thread_local_cluster.h"
 
 #include "common/buffer/buffer_impl.h"
 #include "common/network/address_impl.h"
@@ -19,8 +20,8 @@
 #include "common/network/upstream_server_name.h"
 #include "common/router/metadatamatchcriteria_impl.h"
 #include "common/tcp_proxy/tcp_proxy.h"
-#include "common/upstream/upstream_impl.h"
 #include "common/upstream/cluster_manager_impl.h"
+#include "common/upstream/upstream_impl.h"
 
 #include "extensions/access_loggers/well_known_names.h"
 
@@ -85,6 +86,12 @@ public:
     {
       testing::InSequence sequence;
       for (uint32_t i = 0; i < connections; i++) {
+        EXPECT_CALL(factory_context_.cluster_manager_, futureThreadLocalCluster(_))
+            .WillOnce(testing::WithArg<0>(Invoke([this, i](absl::string_view name) {
+              future_clusters_.push_back(std::make_shared<Upstream::DelayedFutureCluster>(
+                  name, factory_context_.cluster_manager_, per_cluster_ready_flags_[i]));
+              return future_clusters_.back();
+            })));
         EXPECT_CALL(factory_context_.cluster_manager_.thread_local_cluster_, tcpConnPool(_, _))
             .WillOnce(Return(&conn_pool_))
             .RetiresOnSaturation();
@@ -117,8 +124,9 @@ public:
     }
   }
   // Preallocate 16 bool elements to accommodate multiple upstream connection tests. vector<bool>
-  // cannot be used here because the bool element in vector is not referencable.
+  // cannot be used because we cannot get reference to any bool element in vector<bool>.
   std::array<bool, 16> per_cluster_ready_flags_{false};
+  std::vector<std::shared_ptr<Upstream::DelayedFutureCluster>> future_clusters_;
 };
 
 // Test that if the downstream connection is closed before the upstream connection
@@ -132,8 +140,11 @@ TEST_F(TcpProxyFutureClusterTest, LocalClosedBeforeClusterIsReady) {
   filter_callbacks_.connection_.raiseEvent(Network::ConnectionEvent::LocalClose);
 }
 
-TEST_F(TcpProxyFutureClusterTest, NoHost) {
-  EXPECT_CALL(filter_callbacks_.connection_, close(Network::ConnectionCloseType::NoFlush));
+TEST_F(TcpProxyFutureClusterTest, ClusterIsNotReady) {
+  auto future = std::make_shared<Upstream::DelayedFutureCluster>(
+      "fake_cluster", factory_context_.cluster_manager_, per_cluster_ready_flags_[0]);
+  EXPECT_CALL(factory_context_.cluster_manager_, futureThreadLocalCluster(_))
+      .WillOnce(Return(future));
   setup(0, accessLogConfig("%RESPONSE_FLAGS%"));
   filter_.reset();
   EXPECT_EQ(access_log_data_, "UH");
@@ -142,6 +153,8 @@ TEST_F(TcpProxyFutureClusterTest, NoHost) {
 // Test that downstream is closed after an upstream LocalClose.
 TEST_F(TcpProxyFutureClusterTest, UpstreamLocalDisconnect) {
   setup(1);
+  per_cluster_ready_flags_[0] = true;
+  future_clusters_[0]->readyCallback();
 
   raiseEventUpstreamConnected(0);
 
@@ -160,6 +173,8 @@ TEST_F(TcpProxyFutureClusterTest, UpstreamLocalDisconnect) {
 // Test that downstream is closed after an upstream RemoteClose.
 TEST_F(TcpProxyFutureClusterTest, UpstreamRemoteDisconnect) {
   setup(1);
+  per_cluster_ready_flags_[0] = true;
+  future_clusters_[0]->readyCallback();
 
   raiseEventUpstreamConnected(0);
 

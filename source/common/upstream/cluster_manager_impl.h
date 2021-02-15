@@ -627,8 +627,15 @@ public:
   DelayedFutureCluster(absl::string_view cluster_name, ClusterManager& cluster_manager,
                        bool& ready_flag)
       : FutureCluster(cluster_name, cluster_manager), ready_(ready_flag) {}
+  // FutureCluster
   bool isReady() override { return ready_; }
   std::unique_ptr<Handle> await(Event::Dispatcher&, ResumeCb cb) override;
+
+  // Invoke the callback.
+  void readyCallback() {
+    ASSERT(ready_);
+    cb_();
+  }
 
 private:
   class DumbHandle;

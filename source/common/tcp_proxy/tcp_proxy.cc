@@ -226,13 +226,19 @@ Filter::Filter(ConfigSharedPtr config, Upstream::ClusterManager& cluster_manager
 }
 
 Filter::~Filter() {
+  // This filter is destroyed while the future cluster is pending. Destroy the handle_ to prevent
+  // the future cluster callback.
+  if (future_cluster_handle_ != nullptr) {
+    future_cluster_handle_ = nullptr;
+    // TODO(lambdai): Add a new ResponseFlag and a metric.
+    getStreamInfo().setResponseFlag(StreamInfo::ResponseFlag::NoHealthyUpstream);
+  }
   for (const auto& access_log : config_->accessLogs()) {
     access_log->log(nullptr, nullptr, nullptr, getStreamInfo());
   }
 
   ASSERT(generic_conn_pool_ == nullptr);
   ASSERT(upstream_ == nullptr);
-  future_cluster_handle_ = nullptr;
 }
 
 TcpProxyStats Config::SharedConfig::generateStats(Stats::Scope& scope) {
@@ -393,8 +399,9 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
   if (future->isReady()) {
     onClusterReady(*future);
   } else {
-    future_cluster_handle_ = future->await(read_callbacks_->connection().dispatcher(),
-                                           [this](Upstream::FutureCluster& f) { onClusterReady(f); });
+    future_cluster_handle_ =
+        future->await(read_callbacks_->connection().dispatcher(),
+                      [this](Upstream::FutureCluster& f) { onClusterReady(f); });
   }
   return Network::FilterStatus::StopIteration;
 }
