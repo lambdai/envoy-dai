@@ -232,6 +232,7 @@ Filter::~Filter() {
 
   ASSERT(generic_conn_pool_ == nullptr);
   ASSERT(upstream_ == nullptr);
+  future_cluster_handle_ = nullptr;
 }
 
 TcpProxyStats Config::SharedConfig::generateStats(Stats::Scope& scope) {
@@ -390,18 +391,18 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
   std::shared_ptr<Upstream::FutureCluster> future =
       cluster_manager_.futureThreadLocalCluster(cluster_name);
   if (future->isReady()) {
-    onClusterReady(std::move(future));
+    onClusterReady(*future);
   } else {
-    // TODO(lambdai): Disable read until upstream cluster is ready.
-    // fire the await.
-    ASSERT(false, "NOT_IMPLEMENTED_YET");
+    future_cluster_handle_ = future->await(read_callbacks_->connection().dispatcher(),
+                                           [this](Upstream::FutureCluster& f) { onClusterReady(f); });
   }
   return Network::FilterStatus::StopIteration;
 }
 
-void Filter::onClusterReady(std::shared_ptr<Upstream::FutureCluster> future) {
-  Upstream::ThreadLocalCluster* thread_local_cluster = future->getThreadLocalCluster();
-  absl::string_view cluster_name = future->getClusterName();
+void Filter::onClusterReady(Upstream::FutureCluster& future) {
+  future_cluster_handle_ = nullptr;
+  Upstream::ThreadLocalCluster* thread_local_cluster = future.getThreadLocalCluster();
+  absl::string_view cluster_name = future.getClusterName();
   if (thread_local_cluster) {
     ENVOY_CONN_LOG(debug, "Creating connection to cluster {}", read_callbacks_->connection(),
                    cluster_name);
@@ -599,6 +600,13 @@ void Filter::onDownstreamEvent(Network::ConnectionEvent event) {
         event == Network::ConnectionEvent::RemoteClose) {
       // Cancel the conn pool request and close any excess pending requests.
       generic_conn_pool_.reset();
+    }
+  }
+  // The future cluster callback can be waiting. Cancel the future callback.
+  if (future_cluster_handle_) {
+    if (event == Network::ConnectionEvent::LocalClose ||
+        event == Network::ConnectionEvent::RemoteClose) {
+      future_cluster_handle_.reset();
     }
   }
 }

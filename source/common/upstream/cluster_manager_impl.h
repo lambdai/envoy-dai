@@ -634,7 +634,7 @@ private:
   class DumbHandle;
   friend class DumbHandle;
   // The callback which is optional invoked on the target dispatcher.
-  ResumeCb cb_;
+  std::function<void()> cb_;
   // The flag if the future cluster is ready. This flag should only be switched from false to true.
   bool& ready_;
   // The flag if the ResumeCb is valid. This flag should only be switch false to true by handler.

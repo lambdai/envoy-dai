@@ -101,6 +101,7 @@ envoy_cc_test(
         "//source/common/network:upstream_server_name_lib",
         "//source/common/stats:stats_lib",
         "//source/common/tcp_proxy",
+        "//source/common/upstream:cluster_manager_lib",
         "//source/common/upstream:upstream_includes",
         "//source/common/upstream:upstream_lib",
         "//source/extensions/access_loggers:well_known_names",

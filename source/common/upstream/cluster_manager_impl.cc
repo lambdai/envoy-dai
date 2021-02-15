@@ -1561,10 +1561,12 @@ private:
 
 std::unique_ptr<FutureCluster::Handle> DelayedFutureCluster::await(Event::Dispatcher&,
                                                                    ResumeCb cb) {
-  cb_ = [this, original_cb = std::move(cb)]() {
+  cb_ = [this, original_cb = std::move(cb)]() mutable {
     if (!is_canceled_) {
-      original_cb();
+      original_cb(*this);
     }
+    // Erase the function to release the captures.
+    original_cb = nullptr;
   };
   return std::make_unique<DumbHandle>(*this);
 }

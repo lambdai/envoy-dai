@@ -97,7 +97,7 @@ public:
 class FutureCluster {
 public:
   using Handle = FutureClusterHandle;
-  using ResumeCb = std::function<void()>;
+  using ResumeCb = std::function<void(FutureCluster&)>;
   FutureCluster(absl::string_view cluster_name, ClusterManager& cluster_manager)
       : cluster_manager_(cluster_manager), cluster_name_(cluster_name) {}
   virtual ~FutureCluster() = default;

@@ -20,6 +20,7 @@
 #include "common/router/metadatamatchcriteria_impl.h"
 #include "common/tcp_proxy/tcp_proxy.h"
 #include "common/upstream/upstream_impl.h"
+#include "common/upstream/cluster_manager_impl.h"
 
 #include "extensions/access_loggers/well_known_names.h"
 
@@ -61,6 +62,7 @@ public:
   using TcpProxyTestBase::setup;
   void setup(uint32_t connections,
              const envoy::extensions::filters::network::tcp_proxy::v3::TcpProxy& config) override {
+    FANCY_LOG(info, "lambdai: in TcpProxyFutureClusterTest:setup/2");
     configure(config);
     upstream_local_address_ = Network::Utility::resolveUrl("tcp://2.2.2.2:50000");
     upstream_remote_address_ = Network::Utility::resolveUrl("tcp://127.0.0.1:80");
@@ -106,6 +108,7 @@ public:
       filter_->initializeReadFilterCallbacks(filter_callbacks_);
       filter_callbacks_.connection_.streamInfo().setDownstreamSslConnection(
           filter_callbacks_.connection_.ssl());
+      FANCY_LOG(info, "lambdai: pre onNewConnection");
       EXPECT_EQ(Network::FilterStatus::StopIteration, filter_->onNewConnection());
 
       EXPECT_EQ(absl::optional<uint64_t>(), filter_->computeHashKey());
@@ -113,13 +116,19 @@ public:
       EXPECT_EQ(nullptr, filter_->metadataMatchCriteria());
     }
   }
+  // Preallocate 16 bool elements to accommodate multiple upstream connection tests. vector<bool>
+  // cannot be used here because the bool element in vector is not referencable.
+  std::array<bool, 16> per_cluster_ready_flags_{false};
 };
 
 // Test that if the downstream connection is closed before the upstream connection
 // is established, the upstream connection is cancelled.
-TEST_F(TcpProxyFutureClusterTest, LocalClosedBeforeUpstreamConnected) {
-  setup(1);
-  EXPECT_CALL(*conn_pool_handles_.at(0), cancel(Tcp::ConnectionPool::CancelPolicy::CloseExcess));
+TEST_F(TcpProxyFutureClusterTest, LocalClosedBeforeClusterIsReady) {
+  auto future = std::make_shared<Upstream::DelayedFutureCluster>(
+      "fake_cluster", factory_context_.cluster_manager_, per_cluster_ready_flags_[0]);
+  EXPECT_CALL(factory_context_.cluster_manager_, futureThreadLocalCluster(_))
+      .WillOnce(Return(future));
+  setup(0);
   filter_callbacks_.connection_.raiseEvent(Network::ConnectionEvent::LocalClose);
 }
 
@@ -128,6 +137,42 @@ TEST_F(TcpProxyFutureClusterTest, NoHost) {
   setup(0, accessLogConfig("%RESPONSE_FLAGS%"));
   filter_.reset();
   EXPECT_EQ(access_log_data_, "UH");
+}
+
+// Test that downstream is closed after an upstream LocalClose.
+TEST_F(TcpProxyFutureClusterTest, UpstreamLocalDisconnect) {
+  setup(1);
+
+  raiseEventUpstreamConnected(0);
+
+  Buffer::OwnedImpl buffer("hello");
+  EXPECT_CALL(*upstream_connections_.at(0), write(BufferEqual(&buffer), false));
+  filter_->onData(buffer, false);
+
+  Buffer::OwnedImpl response("world");
+  EXPECT_CALL(filter_callbacks_.connection_, write(BufferEqual(&response), _));
+  upstream_callbacks_->onUpstreamData(response, false);
+
+  EXPECT_CALL(filter_callbacks_.connection_, close(_));
+  upstream_callbacks_->onEvent(Network::ConnectionEvent::LocalClose);
+}
+
+// Test that downstream is closed after an upstream RemoteClose.
+TEST_F(TcpProxyFutureClusterTest, UpstreamRemoteDisconnect) {
+  setup(1);
+
+  raiseEventUpstreamConnected(0);
+
+  Buffer::OwnedImpl buffer("hello");
+  EXPECT_CALL(*upstream_connections_.at(0), write(BufferEqual(&buffer), false));
+  filter_->onData(buffer, false);
+
+  Buffer::OwnedImpl response("world");
+  EXPECT_CALL(filter_callbacks_.connection_, write(BufferEqual(&response), _));
+  upstream_callbacks_->onUpstreamData(response, false);
+
+  EXPECT_CALL(filter_callbacks_.connection_, close(Network::ConnectionCloseType::FlushWrite));
+  upstream_callbacks_->onEvent(Network::ConnectionEvent::RemoteClose);
 }
 
 } // namespace
