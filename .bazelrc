@@ -52,8 +52,12 @@ build:asan --config=sanitizer
 # ASAN install its signal handler, disable ours so the stacktrace will be printed by ASAN
 build:asan --define signal_trace=disabled
 build:asan --define ENVOY_CONFIG_ASAN=1
-build:asan --copt -fsanitize=address,undefined
-build:asan --linkopt -fsanitize=address,undefined
+build:asan --copt -fsanitize=leak
+no-omit-frame-pointer
+build:asan --linkopt -fsanitize=leak
+build:asan --copt=-fno-omit-frame-pointer
+#build:asan --copt -fsanitize=address,undefined
+#build:asan --linkopt -fsanitize=address,undefined
 # vptr and function sanitizer are enabled in clang-asan if it is set up via bazel/setup_clang.sh.
 build:asan --copt -fno-sanitize=vptr,function
 build:asan --linkopt -fno-sanitize=vptr,function
@@ -116,6 +120,7 @@ build:libc++ --action_env=BAZEL_CXXOPTS=-stdlib=libc++
 build:libc++ --action_env=BAZEL_LINKLIBS=-l%:libc++.a:-l%:libc++abi.a
 build:libc++ --action_env=BAZEL_LINKOPTS=-lm:-pthread
 build:libc++ --define force_libcpp=enabled
+#lambdai build:libc++ --copt -fsanitize=leak
 
 # Optimize build for binary size reduction.
 build:sizeopt -c opt --copt -Os
