@@ -53,7 +53,6 @@ build:asan --config=sanitizer
 build:asan --define signal_trace=disabled
 build:asan --define ENVOY_CONFIG_ASAN=1
 build:asan --copt -fsanitize=leak
-no-omit-frame-pointer
 build:asan --linkopt -fsanitize=leak
 build:asan --copt=-fno-omit-frame-pointer
 #build:asan --copt -fsanitize=address,undefined
@@ -61,6 +60,7 @@ build:asan --copt=-fno-omit-frame-pointer
 # vptr and function sanitizer are enabled in clang-asan if it is set up via bazel/setup_clang.sh.
 build:asan --copt -fno-sanitize=vptr,function
 build:asan --linkopt -fno-sanitize=vptr,function
+build:asan --linkopt -fno-omit-frame-pointer
 build:asan --copt -DADDRESS_SANITIZER=1
 build:asan --copt -D__SANITIZE_ADDRESS__
 build:asan --test_env=ASAN_OPTIONS=handle_abort=1:allow_addr2line=true:check_initialization_order=true:strict_init_order=true:detect_odr_violation=1
