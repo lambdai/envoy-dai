@@ -5,13 +5,13 @@
 
 #include "envoy/buffer/buffer.h"
 #include "envoy/config/typed_config.h"
-#include "envoy/registry/registry.h"
 #include "envoy/network/connection.h"
-
-#include "extensions/io_socket/address_map.h"
+#include "envoy/registry/registry.h"
 
 #include "common/common/assert.h"
 #include "common/singleton/const_singleton.h"
+
+#include "extensions/io_socket/address_map.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -31,7 +31,7 @@ public:
 
   /**
    * Convenience method to lookup a factory by destination address type.
-   * @return ClientConnectionFactory& for the destiantion address.
+   * @return ClientConnectionFactory& for the destination address.
    */
   static ClientConnectionFactory*
   getFactoryByAddress(Network::Address::InstanceConstSharedPtr& destination_address) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "envoy/network/address.h"
+
 #include "extensions/io_socket/config.h"
 
 namespace Envoy {

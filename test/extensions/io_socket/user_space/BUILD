@@ -39,3 +39,13 @@ envoy_extension_cc_test(
         "//test/mocks/event:event_mocks",
     ],
 )
+
+envoy_extension_cc_test(
+    name = "b_factory_test",
+    srcs = ["b_factory_test.cc"],
+    extension_name = "envoy.io_socket.user_space",
+    deps = [
+        "//source/extensions/io_socket/user_space:b_factory",
+        "//test/test_common:registry_lib",
+    ],
+)

@@ -1,7 +1,7 @@
-
 #include "common/network/address_impl.h"
 
-#include "extensions/io_socket/buffered_io_socket/b_factory.h"
+#include "extensions/io_socket/user_space/b_factory.h"
+
 #include "test/test_common/registry.h"
 
 #include "gmock/gmock.h"
@@ -28,7 +28,7 @@ TEST_F(FactoryTest, TestCreate) {
   // Registered.
   ASSERT_NE(nullptr, f);
   auto connection = f->createClientConnection();
-  // Naive implemention.
+  // Naive implementation.
   ASSERT_EQ(nullptr, connection);
 }
 } // namespace
