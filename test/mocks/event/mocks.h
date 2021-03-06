@@ -138,7 +138,8 @@ public:
                bool bind_to_port, uint32_t backlog_size));
   MOCK_METHOD(Network::UdpListener*, createUdpListener_,
               (Network::SocketSharedPtr socket, Network::UdpListenerCallbacks& cb));
-  MOCK_METHOD(void, registerInternalListenerManager, (Network::InternalListenerManagerSharedPtr& internal_listener_manager));
+  MOCK_METHOD(void, registerInternalListenerManager,
+              (Network::InternalListenerManager & internal_listener_manager));
   MOCK_METHOD(Timer*, createTimer_, (Event::TimerCb cb));
   MOCK_METHOD(Timer*, createScaledTimer_, (ScaledTimerMinimum minimum, Event::TimerCb cb));
   MOCK_METHOD(Timer*, createScaledTypedTimer_, (ScaledTimerType timer_type, Event::TimerCb cb));

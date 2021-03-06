@@ -211,13 +211,13 @@ Network::UdpListenerPtr DispatcherImpl::createUdpListener(Network::SocketSharedP
   return std::make_unique<Network::UdpListenerImpl>(*this, std::move(socket), cb, timeSource());
 }
 
-void DispatcherImpl::registerInternalListenerManager(Network::InternalListenerManagerSharedPtr& internal_listener_manager) {
-    ASSERT(isThreadSafe());
-      ASSERT(!internal_listener_manager_, "Each dispatcher can have at most one registered internal listener manager.");
-  internal_listener_manager_ =
-      internal_listener_manager;
-}                                                  
-
+void DispatcherImpl::registerInternalListenerManager(
+    Network::InternalListenerManager& internal_listener_manager) {
+  ASSERT(isThreadSafe());
+  ASSERT(!internal_listener_manager_,
+         "Each dispatcher can have at most one registered internal listener manager.");
+  internal_listener_manager_ = internal_listener_manager;
+}
 
 TimerPtr DispatcherImpl::createTimer(TimerCb cb) {
   ASSERT(isThreadSafe());

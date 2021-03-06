@@ -425,7 +425,8 @@ public:
   findByAddress(const Address::InstanceConstSharedPtr& listen_address) PURE;
 };
 
-using InternalListenerManagerSharedPtr = std::shared_ptr<InternalListenerManager>;
+using InternalListenerManagerOptRef =
+    absl::optional<std::reference_wrapper<InternalListenerManager>>;
 
 } // namespace Network
 } // namespace Envoy

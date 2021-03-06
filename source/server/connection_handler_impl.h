@@ -90,7 +90,7 @@ public:
   // Network::IntelListenerManager
   Network::InternalListenerOptRef
   findByAddress(const Network::Address::InstanceConstSharedPtr& listen_address) override;
-  
+
   /**
    * Wrapper for an active listener owned by this handler.
    */
