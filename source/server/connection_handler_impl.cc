@@ -160,6 +160,11 @@ void ConnectionHandlerImpl::setListenerRejectFraction(UnitFloat reject_fraction)
   }
 }
 
+Network::InternalListenerOptRef
+ConnectionHandlerImpl::findByAddress(const Network::Address::InstanceConstSharedPtr&) {
+  return absl::nullopt;
+}
+
 void ConnectionHandlerImpl::ActiveTcpListener::removeConnection(ActiveTcpConnection& connection) {
   ENVOY_CONN_LOG(debug, "adding to cleanup list", *connection.connection_);
   ActiveConnections& active_connections = connection.active_connections_;

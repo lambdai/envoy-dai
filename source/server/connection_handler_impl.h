@@ -63,6 +63,7 @@ class ActiveUdpListenerBase;
  * main thread for non-threaded listeners.
  */
 class ConnectionHandlerImpl : public Network::ConnectionHandler,
+                              public Network::InternalListenerManager,
                               NonCopyable,
                               Logger::Loggable<Logger::Id::conn_handler> {
 public:
@@ -86,6 +87,10 @@ public:
   void setListenerRejectFraction(UnitFloat reject_fraction) override;
   const std::string& statPrefix() const override { return per_handler_stat_prefix_; }
 
+  // Network::IntelListenerManager
+  Network::InternalListenerOptRef
+  findByAddress(const Network::Address::InstanceConstSharedPtr& listen_address) override;
+  
   /**
    * Wrapper for an active listener owned by this handler.
    */

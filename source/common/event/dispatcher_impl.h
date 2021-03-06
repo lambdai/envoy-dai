@@ -12,6 +12,7 @@
 #include "envoy/event/deferred_deletable.h"
 #include "envoy/event/dispatcher.h"
 #include "envoy/network/connection_handler.h"
+#include "envoy/network/listener.h"
 #include "envoy/stats/scope.h"
 
 #include "common/common/logger.h"
@@ -77,6 +78,8 @@ public:
                                       uint32_t backlog_size) override;
   Network::UdpListenerPtr createUdpListener(Network::SocketSharedPtr socket,
                                             Network::UdpListenerCallbacks& cb) override;
+  void registerInternalListenerManager(Network::InternalListenerManagerSharedPtr& internal_listener_manager) override;                                                  
+                                 
   TimerPtr createTimer(TimerCb cb) override;
   TimerPtr createScaledTimer(ScaledTimerType timer_type, TimerCb cb) override;
   TimerPtr createScaledTimer(ScaledTimerMinimum minimum, TimerCb cb) override;
@@ -173,6 +176,7 @@ private:
   MonotonicTime approximate_monotonic_time_;
   WatchdogRegistrationPtr watchdog_registration_;
   const ScaledRangeTimerManagerPtr scaled_timer_manager_;
+  Network::InternalListenerManagerSharedPtr internal_listener_manager_;
 };
 
 } // namespace Event

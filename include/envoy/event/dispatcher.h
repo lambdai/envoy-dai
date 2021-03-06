@@ -235,6 +235,9 @@ public:
    */
   virtual Network::UdpListenerPtr createUdpListener(Network::SocketSharedPtr socket,
                                                     Network::UdpListenerCallbacks& cb) PURE;
+
+  virtual void registerInternalListenerManager(Network::InternalListenerManagerSharedPtr& internal_listener_manager) PURE;                                                  
+
   /**
    * Submits an item for deferred delete. @see DeferredDeletable.
    */

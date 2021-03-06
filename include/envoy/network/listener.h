@@ -412,5 +412,20 @@ public:
 
 using UdpListenerWorkerRouterPtr = std::unique_ptr<UdpListenerWorkerRouter>;
 
+class InternalListener {};
+
+using InternalListenerPtr = std::unique_ptr<InternalListener>;
+
+using InternalListenerOptRef = absl::optional<std::reference_wrapper<InternalListener>>;
+
+class InternalListenerManager {
+public:
+  virtual ~InternalListenerManager() = default;
+  virtual InternalListenerOptRef
+  findByAddress(const Address::InstanceConstSharedPtr& listen_address) PURE;
+};
+
+using InternalListenerManagerSharedPtr = std::shared_ptr<InternalListenerManager>;
+
 } // namespace Network
 } // namespace Envoy
