@@ -208,6 +208,29 @@ public:
   virtual void onReject(RejectCause cause) PURE;
 };
 
+// TODO(lambdai): Duplicate TcpListenerCallbacks for now and decide if we should merge into one
+// during the PR.
+class InternalListenerCallbacks {
+public:
+  virtual ~InternalListenerCallbacks() = default;
+
+  /**
+   * Called when a new connection is accepted.
+   * @param socket supplies the socket that is moved into the callee.
+   */
+  virtual void onAccept(ConnectionSocketPtr&& socket) PURE;
+
+  virtual Event::Dispatcher& dispatcher() PURE;
+
+  // enum class RejectCause {
+  //   GlobalCxLimit,
+  //   OverloadAction,
+  // };
+  // /**
+  //  * Called when a new connection is rejected.
+  //  */
+  // virtual void onReject(RejectCause cause) PURE;
+};
 /**
  * Utility struct that encapsulates the information from a udp socket's recvmmsg call.
  */
