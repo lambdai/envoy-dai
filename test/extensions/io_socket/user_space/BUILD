@@ -41,11 +41,12 @@ envoy_extension_cc_test(
 )
 
 envoy_extension_cc_test(
-    name = "b_factory_test",
-    srcs = ["b_factory_test.cc"],
+    name = "connection_factory_test",
+    srcs = ["connection_factory_test.cc"],
     extension_name = "envoy.io_socket.user_space",
     deps = [
-        "//source/extensions/io_socket/user_space:b_factory",
+        "//source/extensions/io_socket/user_space:connection_factory",
         "//test/test_common:registry_lib",
+        "//test/test_common:utility_lib",
     ],
 )

@@ -138,6 +138,22 @@ constexpr absl::string_view IpName = "Ip";
 constexpr absl::string_view PipeName = "Pipe";
 constexpr absl::string_view EnvoyInternalName = "EnvoyInternal";
 
+class AddressMap {
+public:
+  constexpr absl::string_view operator[](Type address_type) const {
+    switch (address_type) {
+    case Type::Ip:
+      return IpName;
+    case Type::Pipe:
+      return PipeName;
+    case Type::EnvoyInternal:
+      return EnvoyInternalName;
+    }
+  }
+};
+
+constexpr AddressMap address_map;
+
 /**
  * Interface for all network addresses.
  */

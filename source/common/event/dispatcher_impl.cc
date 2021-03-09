@@ -21,6 +21,7 @@
 #include "common/event/signal_impl.h"
 #include "common/event/timer_impl.h"
 #include "common/filesystem/watcher_impl.h"
+#include "common/network/connection_factory.h"
 #include "common/network/connection_impl.h"
 #include "common/network/dns_impl.h"
 #include "common/network/tcp_listener_impl.h"
@@ -151,6 +152,11 @@ DispatcherImpl::createClientConnection(Network::Address::InstanceConstSharedPtr 
                                        Network::TransportSocketPtr&& transport_socket,
                                        const Network::ConnectionSocket::OptionsSharedPtr& options) {
   ASSERT(isThreadSafe());
+  auto* client_connection_factory = Network::ClientConnectionFactory::getFactoryByAddress(address);
+  if (client_connection_factory) {
+    return client_connection_factory->createClientConnection(*this, address, source_address,
+                                                             std::move(transport_socket), options);
+  }
   return std::make_unique<Network::ClientConnectionImpl>(*this, address, source_address,
                                                          std::move(transport_socket), options);
 }

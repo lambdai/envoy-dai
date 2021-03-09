@@ -62,14 +62,14 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
-    name = "b_factory",
+    name = "connection_factory",
     srcs = [
-        "b_factory.cc",
+        "connection_factory.cc",
     ],
     hdrs = [
-        "b_factory.h",
+        "connection_factory.h",
     ],
     deps = [
-        "//source/extensions/io_socket:client_connection_factory",
+        "//source/common/network:connection_factory_lib",
     ],
 )

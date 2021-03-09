@@ -95,6 +95,17 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "connection_factory_lib",
+    hdrs = ["connection_factory.h"],
+    deps = [
+        ":address_lib",
+        "//include/envoy/event:dispatcher_interface",
+        "//include/envoy/network:connection_interface",
+        "//include/envoy/network:filter_interface",
+    ],
+)
+
+envoy_cc_library(
     name = "apple_dns_lib",
     srcs = select({
         "//bazel:apple": ["apple_dns_impl.cc"],
