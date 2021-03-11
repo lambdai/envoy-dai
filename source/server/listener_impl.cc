@@ -366,6 +366,7 @@ void ListenerImpl::buildUdpListenerFactory(Network::Address::SocketType socket_t
   }
 }
 
+<<<<<<< HEAD
 void ListenerImpl::buildListenSocketOptions(Network::Address::SocketType socket_type) {
   if (PROTOBUF_GET_WRAPPED_OR_DEFAULT(config_, transparent, false)) {
     addListenSocketOptions(Network::SocketOptionFactory::buildIpTransparentOptions());
@@ -390,6 +391,18 @@ void ListenerImpl::buildListenSocketOptions(Network::Address::SocketType socket_
 
 void ListenerImpl::createListenerFilterFactories(Network::Address::SocketType socket_type) {
   if (!config_.listener_filters().empty()) {
+=======
+  const absl::optional<std::string> runtime_val =
+      listener_factory_context_->runtime().snapshot().get(cx_limit_runtime_key_);
+  if (runtime_val && runtime_val->empty()) {
+    ENVOY_LOG(warn,
+              "Listener connection limit runtime key {} is empty. There are currently no "
+              "limitations on the number of accepted connections for listener {}.",
+              cx_limit_runtime_key_, config_.name());
+  }
+
+  if (!config.listener_filters().empty()) {
+>>>>>>> origin/release/v1.14
     switch (socket_type) {
     case Network::Address::SocketType::Datagram:
       if (config_.listener_filters().size() > 1) {

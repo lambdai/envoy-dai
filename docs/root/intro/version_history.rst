@@ -2,7 +2,60 @@ Version history
 ---------------
 
 1.14.5 (Pending)
+1.14.7 (Pending)
 ================
+Changes
+-------
+* http: fixed bugs in datadog and squash filter's handling of responses with no bodies.
+* http: fixed URL parsing for HTTP/1.1 fully qualified URLs and connect requests containing IPv6 addresses.
+* tls: fix detection of the upstream connection close event.
+
+1.14.6 (December 7, 2020)
+=========================
+Changes
+-------
+* listener: fix crash when disabling or re-enabling listeners due to overload while processing LDS updates.
+* tls: fix read resumption after triggering buffer high-watermark and all remaining request/response bytes are stored in the SSL connection's internal buffers.
+* udp: fixed issue in which receiving truncated UDP datagrams would cause Envoy to crash.
+
+1.14.5 (September 29, 2020)
+===========================
+Changes
+-------
+* http: fixed CVE-2020-25017. Previously header matching did not match on all headers for non-inline headers.
+  This patch changes the default behavior to always logically match on all headers. Multiple individual
+  headers will be logically concatenated with ',' similar to what is done with inline headers. This
+  makes the behavior effectively consistent. This behavior can be temporary reverted by setting
+  the runtime value "envoy.reloadable_features.header_match_on_all_headers" to "false".
+
+  Targeted fixes have been additionally performed on the following extensions which make them
+  consider all duplicate headers by default as a comma concatenated list:
+
+    1. Any extension using CEL matching on headers.
+    2. The header to metadata filter.
+    3. The JWT filter.
+    4. The Lua filter.
+
+  Like primary header matching used in routing, RBAC, etc. this behavior can be disabled by setting
+  the runtime value "envoy.reloadable_features.header_match_on_all_headers" to false.
+* http: fixed CVE-2020-25017. The setCopy() header map API previously only set the first header in the case of duplicate
+  non-inline headers. setCopy() now behaves similarly to the other set*() APIs and replaces all found
+  headers with a single value. This may have had security implications in the extauth filter which
+  uses this API. This behavior can be disabled by setting the runtime value
+  "envoy.reloadable_features.http_set_copy_replace_all_headers" to false.
+
+1.14.4 (July 7, 2020)
+=====================
+* tls: fixed a bug where wilcard matching for "\*.foo.com" also matched domains of the form "a.b.foo.com". This behavior can be temporarily reverted by setting runtime feature `envoy.reloadable_features.fix_wildcard_matching` to false.
+
+1.14.3 (June 30, 2020)
+======================
+* buffer: fixed CVE-2020-12603 by avoiding fragmentation, and tracking of HTTP/2 data and control frames in the output buffer.
+* http: fixed CVE-2020-12604 by changing :ref:`stream_idle_timeout <envoy_api_field_config.filter.network.http_connection_manager.v2.HttpConnectionManager.stream_idle_timeout>`
+  to also defend against an HTTP/2 peer that does not open stream window once an entire response has been buffered to be sent to a downstream client.
+* http: fixed CVE-2020-12605 by including request URL in request header size computation, and rejecting partial headers that exceed configured limits.
+* listener: mitigated CVE-2020-8663 by adding runtime support for :ref:`per-listener limits <config_listeners_runtime>` on active/accepted connections.
+* overload management: mitigated CVE-2020-8663 by adding runtime support for :ref:`global limits <config_overload_manager>` on active/accepted connections.
 
 Changes
 -------

@@ -247,7 +247,11 @@ TEST_F(ConnectionHandlerTest, ListenerConnectionLimitEnforced) {
   EXPECT_CALL(*socket_factory_, localAddress()).WillRepeatedly(ReturnRef(normal_address));
   // Only allow a single connection on this listener.
   test_listener1->setMaxConnections(1);
+<<<<<<< HEAD
   handler_->addListener(absl::nullopt, *test_listener1);
+=======
+  handler_->addListener(*test_listener1);
+>>>>>>> origin/release/v1.14
 
   auto listener2 = new NiceMock<Network::MockListener>();
   Network::ListenerCallbacks* listener_callbacks2;
@@ -258,7 +262,11 @@ TEST_F(ConnectionHandlerTest, ListenerConnectionLimitEnforced) {
   EXPECT_CALL(*socket_factory_, localAddress()).WillRepeatedly(ReturnRef(alt_address));
   // Do not allow any connections on this listener.
   test_listener2->setMaxConnections(0);
+<<<<<<< HEAD
   handler_->addListener(absl::nullopt, *test_listener2);
+=======
+  handler_->addListener(*test_listener2);
+>>>>>>> origin/release/v1.14
 
   EXPECT_CALL(manager_, findFilterChain(_)).WillRepeatedly(Return(filter_chain_.get()));
   EXPECT_CALL(factory_, createNetworkFilterChain(_, _)).WillRepeatedly(Return(true));
@@ -378,6 +386,22 @@ TEST_F(ConnectionHandlerTest, AddDisabledListener) {
 
   handler_->disableListeners();
   handler_->addListener(absl::nullopt, *test_listener);
+}
+
+TEST_F(ConnectionHandlerTest, DisableListenerAfterStop) {
+  InSequence s;
+
+  Network::ListenerCallbacks* listener_callbacks;
+  auto listener = new NiceMock<Network::MockListener>();
+  TestListener* test_listener =
+      addListener(1, false, false, "test_listener", listener, &listener_callbacks);
+  EXPECT_CALL(*socket_factory_, localAddress()).WillOnce(ReturnRef(local_address_));
+  handler_->addListener(*test_listener);
+
+  EXPECT_CALL(*listener, onDestroy());
+
+  handler_->stopListeners();
+  handler_->disableListeners();
 }
 
 TEST_F(ConnectionHandlerTest, DestroyCloseConnections) {

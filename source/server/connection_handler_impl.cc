@@ -325,13 +325,21 @@ void ConnectionHandlerImpl::ActiveTcpSocket::newConnection() {
 void ConnectionHandlerImpl::ActiveTcpListener::onAccept(Network::ConnectionSocketPtr&& socket) {
   if (listenerConnectionLimitReached()) {
     ENVOY_LOG(trace, "closing connection: listener connection limit reached for {}",
+<<<<<<< HEAD
               config_->name());
+=======
+              config_.name());
+>>>>>>> origin/release/v1.14
     socket->close();
     stats_.downstream_cx_overflow_.inc();
     return;
   }
 
+<<<<<<< HEAD
   onAcceptWorker(std::move(socket), config_->handOffRestoredDestinationConnections(), false);
+=======
+  onAcceptWorker(std::move(socket), config_.handOffRestoredDestinationConnections(), false);
+>>>>>>> origin/release/v1.14
 }
 
 void ConnectionHandlerImpl::ActiveTcpListener::onAcceptWorker(
@@ -369,6 +377,18 @@ void emitLogs(Network::ListenerConfig& config, StreamInfo::StreamInfo& stream_in
   }
 }
 } // namespace
+
+void ConnectionHandlerImpl::ActiveTcpListener::pauseListening() {
+  if (listener_ != nullptr) {
+    listener_->disable();
+  }
+}
+
+void ConnectionHandlerImpl::ActiveTcpListener::resumeListening() {
+  if (listener_ != nullptr) {
+    listener_->enable();
+  }
+}
 
 void ConnectionHandlerImpl::ActiveTcpListener::newConnection(
     Network::ConnectionSocketPtr&& socket) {
