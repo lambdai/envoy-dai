@@ -16,6 +16,7 @@ envoy_cc_test(
     ],
     # wasm (wee v8 etc) will not compile on Windows
     tags = [
+        "manual",  # wee v8 build times out on CI.
         "skip_on_windows",
     ],
     deps = [
