@@ -19,7 +19,7 @@ namespace Network {
 
 /* Forward declaration */
 class SocketInterface;
-
+class ClientConnectionFactory;
 namespace Address {
 
 /**
@@ -226,6 +226,11 @@ public:
    * @return SocketInterface to be used with the address.
    */
   virtual const Network::SocketInterface& socketInterface() const PURE;
+
+  /**
+   * @return const ClientConnectionFactory& to be used to create the connection.
+   */
+  virtual Network::ClientConnectionFactory& clientConnectionFactory() const PURE;
 };
 
 using InstanceConstSharedPtr = std::shared_ptr<const Instance>;

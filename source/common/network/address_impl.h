@@ -41,6 +41,10 @@ public:
   Type type() const override { return type_; }
 
   const SocketInterface& socketInterface() const override { return socket_interface_; }
+  Network::ClientConnectionFactory& clientConnectionFactory() const override {
+    Network::ClientConnectionFactory* fix_me = nullptr;
+    return *fix_me;
+  }
 
 protected:
   InstanceBase(Type type, const SocketInterface* sock_interface)
