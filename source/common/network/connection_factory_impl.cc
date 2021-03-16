@@ -25,5 +25,13 @@ ClientConnectionPtr ConnectionFactoryImpl::createClientConnection(
                                                          std::move(transport_socket), options);
 }
 
+void ConnectionFactoryImpl::registerInternalListenerManager(
+    Network::InternalListenerManager& internal_listener_manager) {
+  ASSERT(dispatcher_.isThreadSafe());
+  ASSERT(!internal_listener_manager_,
+         "Each dispatcher can have at most one registered internal listener manager.");
+  internal_listener_manager_ = internal_listener_manager;
+}
+
 } // namespace Network
 } // namespace Envoy

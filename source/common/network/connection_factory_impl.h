@@ -49,7 +49,16 @@ public:
                          TransportSocketPtr&& transport_socket,
                          const ConnectionSocket::OptionsSharedPtr& options) override;
 
+  /**
+   * Register the instance of InternalListenerManager. The internal manager is used to locate the
+   * target listener when creating the connection to the envoy internal address. The internal
+   * listener manager can be registered only once.
+   */
+  void registerInternalListenerManager(
+      Network::InternalListenerManager& internal_listener_manager) override;
+
 private:
+  Network::InternalListenerManagerOptRef internal_listener_manager_;
   Event::Dispatcher& dispatcher_;
 };
 

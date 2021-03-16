@@ -355,6 +355,7 @@ public:
 
 using ClientConnectionPtr = std::unique_ptr<ClientConnection>;
 
+class InternalListenerManager;
 class ConnectionFactory {
 public:
   virtual ~ConnectionFactory() = default;
@@ -368,6 +369,9 @@ public:
                          Address::InstanceConstSharedPtr source_address,
                          TransportSocketPtr&& transport_socket,
                          const ConnectionSocket::OptionsSharedPtr& options) PURE;
+
+  virtual void
+  registerInternalListenerManager(Network::InternalListenerManager& internal_listener_manager) PURE;
 };
 } // namespace Network
 } // namespace Envoy

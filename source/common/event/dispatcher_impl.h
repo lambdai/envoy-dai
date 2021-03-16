@@ -79,8 +79,6 @@ public:
                                       uint32_t backlog_size) override;
   Network::UdpListenerPtr createUdpListener(Network::SocketSharedPtr socket,
                                             Network::UdpListenerCallbacks& cb) override;
-  void registerInternalListenerManager(
-      Network::InternalListenerManager& internal_listener_manager) override;
 
   TimerPtr createTimer(TimerCb cb) override;
   TimerPtr createScaledTimer(ScaledTimerType timer_type, TimerCb cb) override;
@@ -178,7 +176,6 @@ private:
   MonotonicTime approximate_monotonic_time_;
   WatchdogRegistrationPtr watchdog_registration_;
   const ScaledRangeTimerManagerPtr scaled_timer_manager_;
-  Network::InternalListenerManagerOptRef internal_listener_manager_;
   std::unique_ptr<Network::ConnectionFactory> connection_factory_;
 };
 
