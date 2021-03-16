@@ -354,12 +354,5 @@ public:
 };
 
 using ClientConnectionPtr = std::unique_ptr<ClientConnection>;
-
-class ClientConnectionFactory {
-public:
-  virtual ~ClientConnectionFactory() = default;
-  virtual ClientConnectionPtr createClientConnection() PURE;
-};
-
 } // namespace Network
 } // namespace Envoy

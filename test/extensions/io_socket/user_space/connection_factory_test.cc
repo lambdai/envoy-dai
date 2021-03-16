@@ -33,7 +33,7 @@ TEST_F(FactoryTest, TestCreate) {
   // TODO(lambdai): share_ptr<const Type> covariance
   auto address = std::dynamic_pointer_cast<const Envoy::Network::Address::Instance>(
       std::make_shared<const Network::Address::EnvoyInternalInstance>("abc"));
-  auto* factory = Network::ClientConnectionFactory::getFactoryByAddress(address);
+  auto* factory = address->clientConnectionFactory();
   // Registered.
   ASSERT_NE(nullptr, factory);
   auto connection =

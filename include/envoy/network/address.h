@@ -228,9 +228,10 @@ public:
   virtual const Network::SocketInterface& socketInterface() const PURE;
 
   /**
-   * @return const ClientConnectionFactory& to be used to create the connection.
+   * @return ClientConnectionFactory* to be used to create the connection. nullptr is no
+   * clientConnectionFactory is found.
    */
-  virtual Network::ClientConnectionFactory& clientConnectionFactory() const PURE;
+  virtual Network::ClientConnectionFactory* clientConnectionFactory() const PURE;
 };
 
 using InstanceConstSharedPtr = std::shared_ptr<const Instance>;

@@ -152,10 +152,10 @@ DispatcherImpl::createClientConnection(Network::Address::InstanceConstSharedPtr 
                                        Network::TransportSocketPtr&& transport_socket,
                                        const Network::ConnectionSocket::OptionsSharedPtr& options) {
   ASSERT(isThreadSafe());
-  auto* client_connection_factory = Network::ClientConnectionFactory::getFactoryByAddress(address);
+  auto* client_connection_factory = address->clientConnectionFactory();
   if (client_connection_factory) {
     return client_connection_factory->createClientConnection(*this, address, source_address,
-                                                             std::move(transport_socket), options);
+                                                         std::move(transport_socket), options);
   }
   return std::make_unique<Network::ClientConnectionImpl>(*this, address, source_address,
                                                          std::move(transport_socket), options);

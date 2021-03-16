@@ -28,20 +28,6 @@ public:
                          const Network::ConnectionSocket::OptionsSharedPtr& options) PURE;
 
   std::string category() const override { return "envoy.connection"; }
-
-  /**
-   * Convenience method to lookup a factory by destination address type.
-   * @return ClientConnectionFactory& for the destination address.
-   */
-  static ClientConnectionFactory*
-  getFactoryByAddress(Network::Address::InstanceConstSharedPtr& destination_address) {
-    if (destination_address == nullptr) {
-      return nullptr;
-    }
-
-    return Registry::FactoryRegistry<ClientConnectionFactory>::getFactory(
-        Network::Address::address_map[destination_address->type()]);
-  }
 };
 
 } // namespace Network
