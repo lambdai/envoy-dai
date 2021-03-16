@@ -354,5 +354,20 @@ public:
 };
 
 using ClientConnectionPtr = std::unique_ptr<ClientConnection>;
+
+class ConnectionFactory {
+public:
+  virtual ~ConnectionFactory() = default;
+
+  virtual ServerConnectionPtr createServerConnection(ConnectionSocketPtr&& socket,
+                                                     TransportSocketPtr&& transport_socket,
+                                                     StreamInfo::StreamInfo& stream_info) PURE;
+
+  virtual ClientConnectionPtr
+  createClientConnection(Address::InstanceConstSharedPtr address,
+                         Address::InstanceConstSharedPtr source_address,
+                         TransportSocketPtr&& transport_socket,
+                         const ConnectionSocket::OptionsSharedPtr& options) PURE;
+};
 } // namespace Network
 } // namespace Envoy

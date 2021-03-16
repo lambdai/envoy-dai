@@ -67,6 +67,7 @@ public:
                          Network::Address::InstanceConstSharedPtr source_address,
                          Network::TransportSocketPtr&& transport_socket,
                          const Network::ConnectionSocket::OptionsSharedPtr& options) override;
+  Network::ConnectionFactory& connectionFactory() override;
   Network::DnsResolverSharedPtr
   createDnsResolver(const std::vector<Network::Address::InstanceConstSharedPtr>& resolvers,
                     const bool use_tcp_for_dns_lookups) override;
@@ -178,6 +179,7 @@ private:
   WatchdogRegistrationPtr watchdog_registration_;
   const ScaledRangeTimerManagerPtr scaled_timer_manager_;
   Network::InternalListenerManagerOptRef internal_listener_manager_;
+  std::unique_ptr<Network::ConnectionFactory> connection_factory_;
 };
 
 } // namespace Event

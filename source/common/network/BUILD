@@ -97,12 +97,14 @@ envoy_cc_library(
 
 envoy_cc_library(
     name = "connection_factory_lib",
-    hdrs = ["connection_factory.h"],
+    srcs = ["connection_factory_impl.cc"],
+    hdrs = ["connection_factory_impl.h"],
     deps = [
         ":address_lib",
         "//include/envoy/event:dispatcher_interface",
         "//include/envoy/network:connection_interface",
         "//include/envoy/network:filter_interface",
+        "//source/common/network:connection_lib",
     ],
 )
 

@@ -42,9 +42,7 @@ public:
   Type type() const override { return type_; }
 
   const SocketInterface& socketInterface() const override { return socket_interface_; }
-  Network::ClientConnectionFactory* clientConnectionFactory() const override {
-    return nullptr;
-  }
+  Network::ClientConnectionFactory* clientConnectionFactory() const override { return nullptr; }
 
 protected:
   InstanceBase(Type type, const SocketInterface* sock_interface)
@@ -273,7 +271,8 @@ public:
   Network::ClientConnectionFactory* clientConnectionFactory() const override {
     return Registry::FactoryRegistry<Network::ClientConnectionFactory>::getFactory(
         Network::Address::address_map[type()]);
-  }  
+  }
+
 private:
   struct EnvoyInternalAddressImpl : public EnvoyInternalAddress {
     explicit EnvoyInternalAddressImpl(const std::string& address_id) : address_id_(address_id) {}

@@ -197,6 +197,8 @@ public:
                          Network::TransportSocketPtr&& transport_socket,
                          const Network::ConnectionSocket::OptionsSharedPtr& options) PURE;
 
+  virtual Network::ConnectionFactory& connectionFactory() PURE;
+
   /**
    * Creates an async DNS resolver. The resolver should only be used on the thread that runs this
    * dispatcher.

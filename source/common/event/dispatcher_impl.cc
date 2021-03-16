@@ -21,7 +21,7 @@
 #include "common/event/signal_impl.h"
 #include "common/event/timer_impl.h"
 #include "common/filesystem/watcher_impl.h"
-#include "common/network/connection_factory.h"
+#include "common/network/connection_factory_impl.h"
 #include "common/network/connection_impl.h"
 #include "common/network/dns_impl.h"
 #include "common/network/tcp_listener_impl.h"
@@ -69,7 +69,8 @@ DispatcherImpl::DispatcherImpl(const std::string& name, Api::Api& api,
       deferred_delete_cb_(base_scheduler_.createSchedulableCallback(
           [this]() -> void { clearDeferredDeleteList(); })),
       post_cb_(base_scheduler_.createSchedulableCallback([this]() -> void { runPostCallbacks(); })),
-      current_to_delete_(&to_delete_1_), scaled_timer_manager_(scaled_timer_factory(*this)) {
+      current_to_delete_(&to_delete_1_), scaled_timer_manager_(scaled_timer_factory(*this)),
+      connection_factory_(std::make_unique<Network::ConnectionFactoryImpl>(*this)) {
   ASSERT(!name_.empty());
   FatalErrorHandler::registerFatalErrorHandler(*this);
   updateApproximateMonotonicTimeInternal();
@@ -142,8 +143,8 @@ DispatcherImpl::createServerConnection(Network::ConnectionSocketPtr&& socket,
                                        Network::TransportSocketPtr&& transport_socket,
                                        StreamInfo::StreamInfo& stream_info) {
   ASSERT(isThreadSafe());
-  return std::make_unique<Network::ServerConnectionImpl>(
-      *this, std::move(socket), std::move(transport_socket), stream_info, true);
+  return connectionFactory().createServerConnection(std::move(socket), std::move(transport_socket),
+                                                    stream_info);
 }
 
 Network::ClientConnectionPtr
@@ -152,14 +153,11 @@ DispatcherImpl::createClientConnection(Network::Address::InstanceConstSharedPtr 
                                        Network::TransportSocketPtr&& transport_socket,
                                        const Network::ConnectionSocket::OptionsSharedPtr& options) {
   ASSERT(isThreadSafe());
-  auto* client_connection_factory = address->clientConnectionFactory();
-  if (client_connection_factory) {
-    return client_connection_factory->createClientConnection(*this, address, source_address,
-                                                         std::move(transport_socket), options);
-  }
-  return std::make_unique<Network::ClientConnectionImpl>(*this, address, source_address,
-                                                         std::move(transport_socket), options);
+  return connectionFactory().createClientConnection(address, source_address,
+                                                    std::move(transport_socket), options);
 }
+
+Network::ConnectionFactory& DispatcherImpl::connectionFactory() { return *connection_factory_; }
 
 Network::DnsResolverSharedPtr DispatcherImpl::createDnsResolver(
     const std::vector<Network::Address::InstanceConstSharedPtr>& resolvers,
