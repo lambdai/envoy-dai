@@ -15,6 +15,7 @@ envoy_cc_library(
     deps = [
         ":socket_interface_lib",
         "//include/envoy/network:address_interface",
+        "//include/envoy/registry",
         "//source/common/api:os_sys_calls_lib",
         "//source/common/common:assert_lib",
         "//source/common/common:utility_lib",
@@ -91,6 +92,19 @@ envoy_cc_library(
         "//source/common/network:listen_socket_lib",
         "//source/common/stream_info:stream_info_lib",
         "@envoy_api//envoy/config/core/v3:pkg_cc_proto",
+    ],
+)
+
+envoy_cc_library(
+    name = "connection_factory_lib",
+    srcs = ["connection_factory_impl.cc"],
+    hdrs = ["connection_factory_impl.h"],
+    deps = [
+        ":address_lib",
+        "//include/envoy/event:dispatcher_interface",
+        "//include/envoy/network:connection_interface",
+        "//include/envoy/network:filter_interface",
+        "//source/common/network:connection_lib",
     ],
 )
 

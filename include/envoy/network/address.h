@@ -19,7 +19,7 @@ namespace Network {
 
 /* Forward declaration */
 class SocketInterface;
-
+class ClientConnectionFactory;
 namespace Address {
 
 /**
@@ -134,6 +134,26 @@ public:
 
 enum class Type { Ip, Pipe, EnvoyInternal };
 
+constexpr absl::string_view IpName = "Ip";
+constexpr absl::string_view PipeName = "Pipe";
+constexpr absl::string_view EnvoyInternalName = "EnvoyInternal";
+
+class AddressMap {
+public:
+  constexpr absl::string_view operator[](Type address_type) const {
+    switch (address_type) {
+    case Type::Ip:
+      return IpName;
+    case Type::Pipe:
+      return PipeName;
+    case Type::EnvoyInternal:
+      return EnvoyInternalName;
+    }
+  }
+};
+
+constexpr AddressMap address_map;
+
 /**
  * Interface for all network addresses.
  */
@@ -206,6 +226,12 @@ public:
    * @return SocketInterface to be used with the address.
    */
   virtual const Network::SocketInterface& socketInterface() const PURE;
+
+  /**
+   * @return ClientConnectionFactory* to be used to create the connection. nullptr is no
+   * clientConnectionFactory is found.
+   */
+  virtual Network::ClientConnectionFactory* clientConnectionFactory() const PURE;
 };
 
 using InstanceConstSharedPtr = std::shared_ptr<const Instance>;

@@ -9,6 +9,7 @@
 #include "envoy/common/platform.h"
 #include "envoy/network/address.h"
 #include "envoy/network/socket.h"
+#include "envoy/registry/registry.h"
 
 #include "common/common/assert.h"
 
@@ -41,6 +42,7 @@ public:
   Type type() const override { return type_; }
 
   const SocketInterface& socketInterface() const override { return socket_interface_; }
+  Network::ClientConnectionFactory* clientConnectionFactory() const override { return nullptr; }
 
 protected:
   InstanceBase(Type type, const SocketInterface* sock_interface)
@@ -266,6 +268,10 @@ public:
   // TODO(lambdai): Verify all callers accepts nullptr.
   const sockaddr* sockAddr() const override { return nullptr; }
   socklen_t sockAddrLen() const override { return 0; }
+  Network::ClientConnectionFactory* clientConnectionFactory() const override {
+    return Registry::FactoryRegistry<Network::ClientConnectionFactory>::getFactory(
+        Network::Address::address_map[type()]);
+  }
 
 private:
   struct EnvoyInternalAddressImpl : public EnvoyInternalAddress {

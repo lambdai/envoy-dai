@@ -12,6 +12,7 @@
 #include "envoy/event/deferred_deletable.h"
 #include "envoy/event/dispatcher.h"
 #include "envoy/network/connection_handler.h"
+#include "envoy/network/listener.h"
 #include "envoy/stats/scope.h"
 
 #include "common/common/logger.h"
@@ -66,6 +67,7 @@ public:
                          Network::Address::InstanceConstSharedPtr source_address,
                          Network::TransportSocketPtr&& transport_socket,
                          const Network::ConnectionSocket::OptionsSharedPtr& options) override;
+  Network::ConnectionFactory& connectionFactory() override;
   Network::DnsResolverSharedPtr
   createDnsResolver(const std::vector<Network::Address::InstanceConstSharedPtr>& resolvers,
                     const bool use_tcp_for_dns_lookups) override;
@@ -77,6 +79,7 @@ public:
                                       uint32_t backlog_size) override;
   Network::UdpListenerPtr createUdpListener(Network::SocketSharedPtr socket,
                                             Network::UdpListenerCallbacks& cb) override;
+
   TimerPtr createTimer(TimerCb cb) override;
   TimerPtr createScaledTimer(ScaledTimerType timer_type, TimerCb cb) override;
   TimerPtr createScaledTimer(ScaledTimerMinimum minimum, TimerCb cb) override;
@@ -173,6 +176,7 @@ private:
   MonotonicTime approximate_monotonic_time_;
   WatchdogRegistrationPtr watchdog_registration_;
   const ScaledRangeTimerManagerPtr scaled_timer_manager_;
+  std::unique_ptr<Network::ConnectionFactory> connection_factory_;
 };
 
 } // namespace Event

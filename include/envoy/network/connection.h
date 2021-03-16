@@ -8,7 +8,6 @@
 #include "envoy/buffer/buffer.h"
 #include "envoy/common/pure.h"
 #include "envoy/event/deferred_deletable.h"
-#include "envoy/network/address.h"
 #include "envoy/network/filter.h"
 #include "envoy/network/listen_socket.h"
 #include "envoy/network/socket.h"
@@ -356,5 +355,23 @@ public:
 
 using ClientConnectionPtr = std::unique_ptr<ClientConnection>;
 
+class InternalListenerManager;
+class ConnectionFactory {
+public:
+  virtual ~ConnectionFactory() = default;
+
+  virtual ServerConnectionPtr createServerConnection(ConnectionSocketPtr&& socket,
+                                                     TransportSocketPtr&& transport_socket,
+                                                     StreamInfo::StreamInfo& stream_info) PURE;
+
+  virtual ClientConnectionPtr
+  createClientConnection(Address::InstanceConstSharedPtr address,
+                         Address::InstanceConstSharedPtr source_address,
+                         TransportSocketPtr&& transport_socket,
+                         const ConnectionSocket::OptionsSharedPtr& options) PURE;
+
+  virtual void
+  registerInternalListenerManager(Network::InternalListenerManager& internal_listener_manager) PURE;
+};
 } // namespace Network
 } // namespace Envoy
