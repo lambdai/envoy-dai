@@ -2,7 +2,11 @@
 
 set -e
 
+<<<<<<< HEAD
 MAIN_BRANCH="refs/heads/master"
+=======
+MAIN_BRANCH="refs/heads/main"
+>>>>>>> remotes/pub/release/v1.15
 
 # shellcheck source=ci/setup_cache.sh
 . "$(dirname "$0")"/setup_cache.sh

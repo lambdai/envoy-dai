@@ -321,7 +321,7 @@ public:
              << "The connection disconnected unexpectedly, and allow_unexpected_disconnects_ is "
                 "false."
                 "\n See "
-                "https://github.com/envoyproxy/envoy/blob/master/test/integration/README.md#"
+                "https://github.com/envoyproxy/envoy/blob/main/test/integration/README.md#"
                 "unexpected-disconnects";
     }
     return testing::AssertionSuccess();
@@ -361,7 +361,7 @@ public:
                      "with a fake connection. Either manage the connection via "
                      "waitForRawConnection() or waitForHttpConnection(), or "
                      "set_allow_unexpected_disconnects(true).\n See "
-                     "https://github.com/envoyproxy/envoy/blob/master/test/integration/README.md#"
+                     "https://github.com/envoyproxy/envoy/blob/main/test/integration/README.md#"
                      "unparented-upstream-connections");
     });
   }
@@ -651,6 +651,11 @@ public:
   Http::Http2::CodecStats& http2CodecStats() {
     return Http::Http2::CodecStats::atomicGet(http2_codec_stats_, stats_store_);
   }
+
+  ABSL_MUST_USE_RESULT
+  testing::AssertionResult
+  rawWriteConnection(uint32_t index, const std::string& data, bool end_stream = false,
+                     std::chrono::milliseconds timeout = TestUtility::DefaultTimeout);
 
 protected:
   Stats::IsolatedStoreImpl stats_store_;
