@@ -563,7 +563,7 @@ message CorsPolicy {
   core.v3.RuntimeFractionalPercent shadow_enabled = 10;
 }
 
-// [#next-free-field: 37]
+// [#next-free-field: 38]
 message RouteAction {
   option (udpa.annotations.versioning).previous_message_type = "envoy.api.v2.route.RouteAction";
 
@@ -968,6 +968,8 @@ message RouteAction {
     //
     // Would rewrite the host header to `envoyproxy.io` given the path `/envoyproxy.io/some/path`.
     type.matcher.v3.RegexMatchAndSubstitute host_rewrite_path_regex = 35;
+
+    google.protobuf.BoolValue consume_xfh = 37;
   }
 
   // Specifies the upstream timeout for the route. If not specified, the default is 15s. This
