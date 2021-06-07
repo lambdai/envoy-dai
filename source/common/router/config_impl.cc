@@ -585,7 +585,10 @@ void RouteEntryImplBase::finalizeRequestHeaders(Http::RequestHeaderMap& headers,
         Http::Utility::updateAuthority(headers, header_value);
       }
     }
-  } else if (host_rewrite_path_regex_ != nullptr) {
+  } else if (false) {
+    //TODO(lambdai)
+    
+  }else if (host_rewrite_path_regex_ != nullptr) {
     const std::string path(headers.getPathValue());
     absl::string_view just_path(Http::PathUtil::removeQueryAndFragment(path));
     Http::Utility::updateAuthority(headers, host_rewrite_path_regex_->replaceAll(
