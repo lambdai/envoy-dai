@@ -341,8 +341,14 @@ HostImpl::createConnection(Event::Dispatcher& dispatcher, const ClusterInfo& clu
   if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.internal_address")) {
     ASSERT(!address->envoyInternalAddress());
   }
+  const bool should_tunnel =
+      tunnel_to_ != nullptr && tunnel_to_->type() == Network::Address::Type::EnvoyInternal;
+  const auto& maybe_tunnel_address = should_tunnel ? tunnle_to_ : address;
+  if (connection_options == nullptr) {
+    connection_options = std::make_shared<Network::ConnectionSocket::Options>();
+  }
   Network::ClientConnectionPtr connection = dispatcher.createClientConnection(
-      address, cluster.sourceAddress(),
+      maybe_tunnel_address, cluster.sourceAddress(),
       socket_factory.createTransportSocket(std::move(transport_socket_options)),
       connection_options);
   connection->setBufferLimits(cluster.perConnectionBufferLimitBytes());

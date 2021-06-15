@@ -36,6 +36,7 @@
 #include "envoy/upstream/load_balancer.h"
 #include "envoy/upstream/locality.h"
 #include "envoy/upstream/upstream.h"
+#include "envoy/network/address.h"
 
 #include "common/common/callback_impl.h"
 #include "common/common/enum_to_int.h"
@@ -195,7 +196,7 @@ public:
            TimeSource& time_source)
       : HostDescriptionImpl(cluster, hostname, address, metadata, locality, health_check_config,
                             priority, time_source),
-        used_(true) {
+        used_(true), tunnel_to_(cluster->upstream_internal_redirect()) {
     setEdsHealthFlag(health_status);
     HostImpl::weight(initial_weight);
   }
@@ -266,6 +267,7 @@ private:
   std::atomic<uint32_t> health_flags_{};
   std::atomic<uint32_t> weight_;
   std::atomic<bool> used_;
+  Network::Address::InstanceConstSharedPtr tunnel_to_;
 };
 
 class HostsPerLocalityImpl : public HostsPerLocality {

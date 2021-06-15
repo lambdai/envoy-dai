@@ -25,6 +25,7 @@
 #include "envoy/upstream/outlier_detection.h"
 #include "envoy/upstream/resource_manager.h"
 #include "envoy/upstream/types.h"
+#include "envoy/network/address.h"
 
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -1005,6 +1006,10 @@ public:
    * @return the Http3 Codec Stats.
    */
   virtual Http::Http3::CodecStats& http3CodecStats() const PURE;
+
+  virtual Network::Address::InstanceConstSharedPtr tunnelRedirect() const {
+    return nullptr;
+  }
 
 protected:
   /**
