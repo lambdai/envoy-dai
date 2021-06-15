@@ -345,6 +345,35 @@ void Utility::appendXff(RequestHeaderMap& headers,
   headers.appendForwardedFor(remote_address.ip()->addressAsString(), ",");
 }
 
+absl::optional<std::string> Utility::moveLastHostFromXFH(Http::RequestHeaderMap& request_headers) {
+    const auto xfh_header = request_headers.ForwardedHost();
+  if (xfh_header == nullptr) {
+    return absl::nullopt;
+  }
+
+  absl::string_view xfh_string(xfh_header->value().getStringView());
+  static const std::string separator(",");
+  // The text after the last remaining comma, or the entirety of the string if there
+  // is no comma, is the requested IP address.
+  const std::string::size_type last_comma = xfh_string.rfind(separator);
+  if (last_comma != std::string::npos && last_comma + separator.size() < xfh_string.size()) {
+    xfh_string = xfh_string.substr(last_comma + separator.size());
+  }
+
+  // Host does not contain white space.
+  xfh_string = StringUtil::ltrim(xfh_string);
+  xfh_string = StringUtil::rtrim(xfh_string);
+
+  auto returned_xfh = absl::make_optional<std::string>(xfh_string);
+  if (last_comma == std::string::npos) {
+    request_headers.removeForwardedHost();
+  } else {
+    // Is it safe to set to substr of it self?
+    request_headers.setForwardedHost(request_headers.ForwardedHost()->value().getStringView().substr(0, last_comma));
+  }
+  return returned_xfh;
+}
+
 void Utility::appendVia(RequestOrResponseHeaderMap& headers, const std::string& via) {
   // TODO(asraa): Investigate whether it is necessary to append with whitespace here by:
   //     (a) Validating we do not expect whitespace in via headers

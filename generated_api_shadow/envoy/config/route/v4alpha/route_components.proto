@@ -977,7 +977,23 @@ message RouteAction {
     // Would rewrite the host header to `envoyproxy.io` given the path `/envoyproxy.io/some/path`.
     type.matcher.v4alpha.RegexMatchAndSubstitute host_rewrite_path_regex = 35;
 
-    google.protobuf.BoolValue consume_xfh = 37;
+    // Indicates that during forwarding, the host header will be replaced by the last value of
+    // ref:`config_http_conn_man_headers_x-forwarded-host` header. Meanwhile, the last value of
+    // ref:`config_http_conn_man_headers_x-forwarded-host` is stripped.
+    //
+    // For example with the following config:
+    //
+    //   .. code-block:: yaml
+    //
+    //     X-Forwarded-Host: foo.com, bar.com
+    //     Host: baz.com
+    //
+    // would rewrite the header to
+    //   .. code-block:: yaml
+    //
+    //     X-Forwarded-Host: foo.com
+    //     Host: bar.com
+    bool consume_xfh = 37;
   }
 
   // Specifies the upstream timeout for the route. If not specified, the default is 15s. This

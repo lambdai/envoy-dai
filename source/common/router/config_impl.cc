@@ -318,6 +318,7 @@ RouteEntryImplBase::RouteEntryImplBase(const VirtualHostImpl& vhost,
           route.route().has_host_rewrite_path_regex()
               ? route.route().host_rewrite_path_regex().substitution()
               : ""),
+      consume_xfh_(route.route().has_consume_xfh() && route.route().consume_xfh()),
       cluster_name_(route.route().cluster()), cluster_header_name_(route.route().cluster_header()),
       cluster_not_found_response_code_(ConfigUtility::parseClusterNotFoundResponseCode(
           route.route().cluster_not_found_response_code())),
@@ -585,10 +586,14 @@ void RouteEntryImplBase::finalizeRequestHeaders(Http::RequestHeaderMap& headers,
         Http::Utility::updateAuthority(headers, header_value);
       }
     }
-  } else if (false) {
-    //TODO(lambdai)
-    
-  }else if (host_rewrite_path_regex_ != nullptr) {
+  } else if (consume_xfh_) {
+    const auto xfh = Http::Utility::moveLastHostFromXFH(headers);
+    if (xfh.has_value()) {
+      headers.setHost(xfh.value());
+    } else {
+      // Warn or fail the request?
+    }
+  } else if (host_rewrite_path_regex_ != nullptr) {
     const std::string path(headers.getPathValue());
     absl::string_view just_path(Http::PathUtil::removeQueryAndFragment(path));
     Http::Utility::updateAuthority(headers, host_rewrite_path_regex_->replaceAll(

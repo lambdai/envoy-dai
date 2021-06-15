@@ -832,6 +832,7 @@ private:
   const absl::optional<Http::LowerCaseString> auto_host_rewrite_header_;
   const Regex::CompiledMatcherPtr host_rewrite_path_regex_;
   const std::string host_rewrite_path_regex_substitution_;
+  const bool consume_xfh_;
   const std::string cluster_name_;
   const Http::LowerCaseString cluster_header_name_;
   const Http::Code cluster_not_found_response_code_;

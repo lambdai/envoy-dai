@@ -379,6 +379,13 @@ struct GetLastAddressFromXffInfo {
  */
 GetLastAddressFromXffInfo getLastAddressFromXFF(const Http::RequestHeaderMap& request_headers,
                                                 uint32_t num_to_skip = 0);
+/**
+ * Strip the last host in the x-forwarded-host header. Delete the XFH header entry if the new header
+ * value is empty.
+ * @param request_headers supplies the request headers.
+ * @return the last host name.
+ */
+absl::optional<std::string> moveLastHostFromXFH(Http::RequestHeaderMap& request_headers);
 
 /**
  * Remove any headers nominated by the Connection header
