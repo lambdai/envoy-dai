@@ -24,6 +24,7 @@
 #include "envoy/local_info/local_info.h"
 #include "envoy/network/dns.h"
 #include "envoy/network/filter.h"
+
 #include "envoy/runtime/runtime.h"
 #include "envoy/secret/secret_manager.h"
 #include "envoy/server/filter_config.h"
@@ -55,7 +56,7 @@
 #include "common/upstream/outlier_detection_impl.h"
 #include "common/upstream/resource_manager_impl.h"
 #include "common/upstream/transport_socket_match_impl.h"
-
+#include "common/network/address_impl.h"
 #include "server/transport_socket_config_impl.h"
 
 #include "extensions/upstreams/http/config.h"
@@ -196,7 +197,7 @@ public:
            TimeSource& time_source)
       : HostDescriptionImpl(cluster, hostname, address, metadata, locality, health_check_config,
                             priority, time_source),
-        used_(true), tunnel_to_(cluster->upstream_internal_redirect()) {
+        used_(true), tunnel_to_(cluster->tunnelRedirect()) {
     setEdsHealthFlag(health_status);
     HostImpl::weight(initial_weight);
   }
@@ -679,6 +680,15 @@ public:
   Http::Http1::CodecStats& http1CodecStats() const override;
   Http::Http2::CodecStats& http2CodecStats() const override;
   Http::Http3::CodecStats& http3CodecStats() const override;
+
+    Network::Address::InstanceConstSharedPtr tunnelRedirect() const override {
+    auto cluster_name = name();
+    auto pos = cluster_name.rfind("tunnel_to_");
+    if ( pos != std::string::npos) {
+      return std::make_shared<Network::Address::EnvoyInternalInstance>(cluster_name.substr(pos + absl::string_view("tunnel_to_").length()));
+    }
+    return nullptr;
+  }
 
 protected:
   // Gets the retry budget percent/concurrency from the circuit breaker thresholds. If the retry

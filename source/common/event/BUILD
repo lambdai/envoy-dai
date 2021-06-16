@@ -47,7 +47,8 @@ envoy_cc_library(
         "//source/common/network:connection_lib",
         "//source/common/network:listener_lib",
 
-        #internal address
+        # internal connection
+        "//source/common/network:socket_option_lib",
         "//source/extensions/io_socket/user_space:config",
     ] + select({
         "//bazel:apple": ["//source/common/network:apple_dns_lib"],

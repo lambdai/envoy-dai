@@ -298,9 +298,10 @@ void ConnectionImpl::noDelay(bool enable) {
     return;
   }
 #endif
-
-  RELEASE_ASSERT(result.rc_ == 0, fmt::format("Failed to set TCP_NODELAY with error {}, {}",
-                                              result.errno_, errorDetails(result.errno_)));
+  // TODO(lambdai): revert and make internal address nodelay with socket opt.
+  // RELEASE_ASSERT(result.rc_ == 0, fmt::format("Failed to set TCP_NODELAY with error {}, {}",
+  //                                             result.errno_, errorDetails(result.errno_)));
+  UNREFERENCED_PARAMETER(result);
 }
 
 void ConnectionImpl::onRead(uint64_t read_buffer_size) {

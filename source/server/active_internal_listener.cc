@@ -155,12 +155,11 @@ void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket) {
   // Unlike tcp listener, no rebalancer is applied and won't call pickTargetHandler to account
   // connections.
   incNumConnections();
-
+  auto restored_local_address = socket->addressProvider().localAddress();
   auto active_socket = std::make_unique<ActiveInternalSocket>(
       *this, std::move(socket), false /* do not handle off at internal listener */);
-  // TODO(lambdai): restore address from either socket options, or from listener config.
   active_socket->socket_->addressProvider().restoreLocalAddress(
-      std::make_shared<Network::Address::Ipv4Instance>("255.255.255.255", 0));
+      restored_local_address);
   active_socket->socket_->addressProvider().setRemoteAddress(
       std::make_shared<Network::Address::Ipv4Instance>("255.255.255.254", 0));
 

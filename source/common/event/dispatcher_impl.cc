@@ -11,6 +11,7 @@
 #include "envoy/network/listen_socket.h"
 #include "envoy/network/listener.h"
 
+#include "common/network/socket_option_impl.h"
 #include "common/buffer/buffer_impl.h"
 #include "common/common/assert.h"
 #include "common/common/lock_guard.h"
@@ -174,8 +175,17 @@ DispatcherImpl::createClientConnection(Network::Address::InstanceConstSharedPtr 
       // It's either in main thread or the worker is not yet started.
       auto internal_listener = internal_listener_manager.value().get().findByAddress(address);
       if (internal_listener.has_value()) {
+        auto original_address = address;
+        if (options != nullptr) {
+          for (const auto& opt : *options) {
+            auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
+            if (internal_opt != nullptr) {
+              original_address = internal_opt->original_remote_address_;
+            }
+          }
+        }
         auto accepted_socket = std::make_unique<Network::AcceptedSocketImpl>(
-            std::move(io_handle_server), address, source_address);
+            std::move(io_handle_server), original_address, source_address);
         // TODO: also check if disabled
         internal_listener.value().get().onAccept(std::move(accepted_socket));
         FANCY_LOG(info, "lambdai: find internal listener {} ", address->asStringView());

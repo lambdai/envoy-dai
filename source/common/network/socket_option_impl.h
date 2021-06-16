@@ -167,5 +167,27 @@ private:
 
 using SocketOptionImplOptRef = absl::optional<std::reference_wrapper<SocketOptionImpl>>;
 
+// Chain POC.
+class InternalSocketOptionImpl : public Socket::Option, Logger::Loggable<Logger::Id::connection> {
+public:
+  InternalSocketOptionImpl(const Network::Address::InstanceConstSharedPtr& original_dst_address) : original_remote_address_(original_dst_address) {}
+  // Socket::Option
+  bool setOption(Socket&, envoy::config::core::v3::SocketOption::SocketState) const override {
+    return true;
+  }
+
+  // The common socket options don't require a hash key.
+  void hashKey(std::vector<uint8_t>&) const override {}
+
+  absl::optional<Details>
+  getOptionDetails(const Socket&,
+                   envoy::config::core::v3::SocketOption::SocketState) const override {
+    return absl::nullopt;
+  }
+
+  bool isSupported() const { return true; }
+
+  const Network::Address::InstanceConstSharedPtr original_remote_address_;
+};
 } // namespace Network
 } // namespace Envoy

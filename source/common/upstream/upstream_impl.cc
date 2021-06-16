@@ -48,10 +48,8 @@
 #include "common/upstream/health_checker_impl.h"
 #include "common/upstream/logical_dns_cluster.h"
 #include "common/upstream/original_dst_cluster.h"
-
-#include "server/transport_socket_config_impl.h"
-
 #include "extensions/filters/network/common/utility.h"
+#include "server/transport_socket_config_impl.h"
 
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/str_cat.h"
@@ -341,12 +339,14 @@ HostImpl::createConnection(Event::Dispatcher& dispatcher, const ClusterInfo& clu
   if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.internal_address")) {
     ASSERT(!address->envoyInternalAddress());
   }
+  const auto& tunnel_to = cluster.tunnelRedirect();
   const bool should_tunnel =
-      tunnel_to_ != nullptr && tunnel_to_->type() == Network::Address::Type::EnvoyInternal;
-  const auto& maybe_tunnel_address = should_tunnel ? tunnle_to_ : address;
+      tunnel_to != nullptr && tunnel_to->type() == Network::Address::Type::EnvoyInternal;
+  const auto& maybe_tunnel_address = should_tunnel ? tunnel_to : address;
   if (connection_options == nullptr) {
     connection_options = std::make_shared<Network::ConnectionSocket::Options>();
   }
+  connection_options->push_back(std::make_shared<Network::InternalSocketOptionImpl>(address));
   Network::ClientConnectionPtr connection = dispatcher.createClientConnection(
       maybe_tunnel_address, cluster.sourceAddress(),
       socket_factory.createTransportSocket(std::move(transport_socket_options)),
