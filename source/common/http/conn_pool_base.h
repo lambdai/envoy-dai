@@ -221,6 +221,50 @@ private:
   bool closed_with_active_rq_{};
 };
 
+class InternalHttpConnPoolImplBase : public Envoy::ConnectionPool::ConnPoolImplBase,
+                                     public Http::ConnectionPool::Instance {
+public:
+  InternalHttpConnPoolImplBase(
+      Upstream::HostConstSharedPtr host, Upstream::ResourcePriority priority,
+      Event::Dispatcher& dispatcher, const Network::ConnectionSocket::OptionsSharedPtr& options,
+      const Network::TransportSocketOptionsSharedPtr& transport_socket_options,
+      Random::RandomGenerator& random_generator, Upstream::ClusterConnectivityState& state,
+      std::vector<Http::Protocol> protocols);
+  ~InternalHttpConnPoolImplBase() override;
+
+  // ConnectionPool::Instance
+  void addDrainedCallback(DrainedCb cb) override { addDrainedCallbackImpl(cb); }
+  void drainConnections() override { drainConnectionsImpl(); }
+  Upstream::HostDescriptionConstSharedPtr host() const override { return host_; }
+  ConnectionPool::Cancellable* newStream(Http::ResponseDecoder& response_decoder,
+                                         Http::ConnectionPool::Callbacks& callbacks) override;
+  bool maybePreconnect(float ratio) override { return false; }
+  bool hasActiveConnections() const override;
+
+  // Creates a new PendingStream and enqueues it into the queue.
+  // For internal api listener there is no async connection creation so pending stream is never
+  // created.
+  ConnectionPool::Cancellable*
+  newPendingStream(Envoy::ConnectionPool::AttachContext& context) override {
+    UNREFERENCED_PARAMETER(context)
+    NOT_IMPLEMENTED_GCOVR_EXCL_LINE;
+  }
+  void onPoolFailure(const Upstream::HostDescriptionConstSharedPtr& host_description,
+                     absl::string_view failure_reason, ConnectionPool::PoolFailureReason reason,
+                     Envoy::ConnectionPool::AttachContext& context) override {
+    auto* callbacks = typedContext<HttpAttachContext>(context).callbacks_;
+    callbacks->onPoolFailure(reason, failure_reason, host_description);
+  }
+  void onPoolReady(Envoy::ConnectionPool::ActiveClient& client,
+                   Envoy::ConnectionPool::AttachContext& context) override;
+
+  //virtual CodecClientPtr createCodecClient(Upstream::Host::CreateConnectionData& data) PURE;
+  //Random::RandomGenerator& randomGenerator() { return random_generator_; }
+
+protected:
+  friend class ActiveClient;
+  Random::RandomGenerator& random_generator_;
+};
 } // namespace Http
 
 } // namespace Envoy
