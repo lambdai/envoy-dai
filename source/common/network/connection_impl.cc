@@ -746,6 +746,11 @@ void ConnectionImpl::updateReadBufferStats(uint64_t num_read, uint64_t new_size)
   ConnectionImplUtility::updateBufferStats(num_read, new_size, last_read_buffer_size_,
                                            connection_stats_->read_total_,
                                            connection_stats_->read_current_);
+  ENVOY_LOG_EVERY_NTH(debug, 100, 
+                 "[C{}] updateReadBufferStats(), read processed {}, current buffer size {}, sum buffer "
+                 "size {}, sum read_total {}",
+                 this->id(), num_read, new_size, connection_stats_->read_current_.value(),
+                 connection_stats_->read_total_.value());
 }
 
 void ConnectionImpl::updateWriteBufferStats(uint64_t num_written, uint64_t new_size) {
@@ -756,6 +761,11 @@ void ConnectionImpl::updateWriteBufferStats(uint64_t num_written, uint64_t new_s
   ConnectionImplUtility::updateBufferStats(num_written, new_size, last_write_buffer_size_,
                                            connection_stats_->write_total_,
                                            connection_stats_->write_current_);
+  ENVOY_LOG_EVERY_NTH(debug, 100, 
+                 "[C{}] updateWriteBufferStats(), write processed {}, current buffer size {}, sum buffer "
+                 "size {}, sum read_total {}",
+                 this->id(), num_written, new_size, connection_stats_->write_current_.value(),
+                 connection_stats_->write_total_.value());
 }
 
 bool ConnectionImpl::bothSidesHalfClosed() {

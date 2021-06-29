@@ -90,7 +90,10 @@ public:
   Api::SysCallIntResult shutdown(int how) override;
   absl::optional<std::chrono::milliseconds> lastRoundTripTime() override { return absl::nullopt; }
 
-  void setWatermarks(uint32_t watermark) { pending_received_data_.setWatermarks(watermark); }
+  void setWatermarks(uint32_t watermark) {
+    ENVOY_LOG(debug, "Socket {} set watermark to {}.", static_cast<void*>(this), watermark);
+    pending_received_data_.setWatermarks(watermark);
+  }
   void onBelowLowWatermark() {
     if (peer_handle_) {
       ENVOY_LOG(debug, "Socket {} switches to low watermark. Notify {}.", static_cast<void*>(this),
@@ -181,6 +184,9 @@ class IoHandleFactory {
 public:
   static std::pair<IoHandleImplPtr, IoHandleImplPtr> createIoHandlePair() {
     auto p = std::pair<IoHandleImplPtr, IoHandleImplPtr>{new IoHandleImpl(), new IoHandleImpl()};
+    // TODO(lambdai): read from runtime.
+    p.first->setWatermarks(10 * 1024 * 1024);
+    p.second->setWatermarks(10 * 1024 * 1024);
     p.first->setPeerHandle(p.second.get());
     p.second->setPeerHandle(p.first.get());
     return p;
