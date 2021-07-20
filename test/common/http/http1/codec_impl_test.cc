@@ -448,6 +448,76 @@ TEST_P(Http1ServerConnectionImplTest, UnsupportedEncoding) {
   EXPECT_EQ(status.message(), "http/1.1 protocol error: unsupported transfer encoding");
 }
 
+// Verify that data is encoded as chunked encoding despite the header is double chunked.
+TEST_P(Http1ServerConnectionImplTest, DoubleChunkedBody1) {
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.reject_unsupported_transfer_encodings", "false"}});
+  initialize();
+
+  InSequence sequence;
+
+  MockRequestDecoder decoder;
+  EXPECT_CALL(callbacks_, newStream(_, _)).WillOnce(ReturnRef(decoder));
+
+  TestRequestHeaderMapImpl expected_headers{
+      {":path", "/"},
+      {":method", "POST"},
+      {"transfer-encoding", "chunked, chunked"},
+  };
+  EXPECT_CALL(decoder, decodeHeaders_(HeaderMapEqual(&expected_headers), false));
+  Buffer::OwnedImpl expected_data("Hello World");
+  EXPECT_CALL(decoder, decodeData(BufferEqual(&expected_data), false));
+  // Call to decodeData("", true) happens after.
+  Buffer::OwnedImpl empty("");
+  EXPECT_CALL(decoder, decodeData(BufferEqual(&empty), true));
+
+  Buffer::OwnedImpl buffer("POST / HTTP/1.1\r\ntransfer-encoding: chunked, chunked\r\n\r\n"
+                           "6\r\nHello \r\n"
+                           "5\r\nWorld\r\n"
+                           "0\r\n\r\n");
+  auto status = codec_->dispatch(buffer);
+  EXPECT_TRUE(status.ok());
+  EXPECT_EQ(0U, buffer.length());
+}
+
+// Verify that data is encoded as chunked encoding despite the header is double chunked.
+TEST_P(Http1ServerConnectionImplTest, DoubleChunkedBody2) {
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.reject_unsupported_transfer_encodings", "false"}});
+  initialize();
+
+  InSequence sequence;
+
+  MockRequestDecoder decoder;
+  EXPECT_CALL(callbacks_, newStream(_, _)).WillOnce(ReturnRef(decoder));
+
+  TestRequestHeaderMapImpl expected_headers{
+      {":path", "/"},
+      {":method", "POST"},
+      {"transfer-encoding", "chunked"},
+      {"transfer-encoding", "chunked"},
+  };
+  EXPECT_CALL(decoder, decodeHeaders_(HeaderMapEqual(&expected_headers), false));
+  Buffer::OwnedImpl expected_data("Hello World");
+  EXPECT_CALL(decoder, decodeData(BufferEqual(&expected_data), false));
+  // Call to decodeData("", true) happens after.
+  Buffer::OwnedImpl empty("");
+  EXPECT_CALL(decoder, decodeData(BufferEqual(&empty), true));
+
+  // Chunked, chunked in seperate lines.
+  Buffer::OwnedImpl buffer("POST / HTTP/1.1\r\n"
+                           "transfer-encoding: chunked\r\ntransfer-encoding: chunked\r\n"
+                           "\r\n"
+                           "6\r\nHello \r\n"
+                           "5\r\nWorld\r\n"
+                           "0\r\n\r\n");
+  auto status = codec_->dispatch(buffer);
+  EXPECT_TRUE(status.ok());
+  EXPECT_EQ(0U, buffer.length());
+}
+
 // Verify that data in the two body chunks is merged before the call to decodeData.
 TEST_P(Http1ServerConnectionImplTest, ChunkedBody) {
   initialize();

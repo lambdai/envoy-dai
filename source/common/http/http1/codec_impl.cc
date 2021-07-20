@@ -479,6 +479,8 @@ ConnectionImpl::ConnectionImpl(Network::Connection& connection, CodecStats& stat
     : connection_(connection), stats_(stats), codec_settings_(settings),
       header_key_formatter_(std::move(header_key_formatter)), processing_trailers_(false),
       handling_upgrade_(false), reset_stream_called_(false), deferred_end_stream_headers_(false),
+      reject_unsupported_transfer_encodings_(Runtime::runtimeFeatureEnabled(
+          "envoy.reloadable_features.reject_unsupported_transfer_encodings")),
       strict_1xx_and_204_headers_(Runtime::runtimeFeatureEnabled(
           "envoy.reloadable_features.strict_1xx_and_204_response_headers")),
       dispatching_(false),
