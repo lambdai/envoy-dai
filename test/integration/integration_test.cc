@@ -1074,6 +1074,32 @@ TEST_P(IntegrationTest, TestHeadWithExplicitTE) {
   tcp_client->close();
 }
 
+TEST_P(IntegrationTest, TestHeadWithExplicitTE) {
+  initialize();
+
+  auto tcp_client = makeTcpConnection(lookupPort("http"));
+  ASSERT_TRUE(tcp_client->write("HEAD / HTTP/1.1\r\nHost: host\r\n\r\n"));
+  FakeRawConnectionPtr fake_upstream_connection;
+  ASSERT_TRUE(fake_upstreams_[0]->waitForRawConnection(fake_upstream_connection));
+  std::string data;
+  ASSERT_TRUE(fake_upstream_connection->waitForData(
+      FakeRawConnection::waitForInexactMatch("\r\n\r\n"), &data));
+
+  ASSERT_TRUE(
+      fake_upstream_connection->write("HTTP/1.1 200 OK\r\nTransfer-encoding: chunked, chunked\r\n\r\n"));
+  tcp_client->waitForData("\r\n\r\n", false);
+  std::string response = tcp_client->data();
+
+  EXPECT_THAT(response, HasSubstr("HTTP/1.1 200 OK\r\n"));
+  EXPECT_THAT(response, Not(HasSubstr("content-length")));
+  EXPECT_THAT(response, HasSubstr("transfer-encoding: chunked\r\n"));
+  EXPECT_THAT(response, EndsWith("\r\n\r\n"));
+
+  ASSERT_TRUE(fake_upstream_connection->close());
+  ASSERT_TRUE(fake_upstream_connection->waitForDisconnect());
+  tcp_client->close();
+}
+
 TEST_P(IntegrationTest, TestBind) {
   std::string address_string;
   if (GetParam() == Network::Address::IpVersion::v4) {
