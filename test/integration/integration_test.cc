@@ -1074,7 +1074,10 @@ TEST_P(IntegrationTest, TestHeadWithExplicitTE) {
   tcp_client->close();
 }
 
-TEST_P(IntegrationTest, TestHeadWithDoubleChunked) {
+TEST_P(IntegrationTest, TestHeadSanitizedWithDoubleChunkedHeader) {
+  config_helper_.addRuntimeOverride(
+      "envoy.reloadable_features.reject_unsupported_transfer_encodings", "false");
+
   initialize();
 
   auto tcp_client = makeTcpConnection(lookupPort("http"));
@@ -1085,12 +1088,10 @@ TEST_P(IntegrationTest, TestHeadWithDoubleChunked) {
   ASSERT_TRUE(fake_upstream_connection->waitForData(
       FakeRawConnection::waitForInexactMatch("\r\n\r\n"), &data));
 
-  ASSERT_TRUE(
-      fake_upstream_connection->write("HTTP/1.1 200 OK\r\nTransfer-encoding: chunked, chunked\r\n\r\n"));
+  ASSERT_TRUE(fake_upstream_connection->write(
+      "HTTP/1.1 200 OK\r\nTransfer-encoding: chunked, chunked\r\n\r\n"));
   tcp_client->waitForData("\r\n\r\n", false);
   std::string response = tcp_client->data();
-
-  ENVOY_LOG_MISC(info, "multi line reponse: {} ", response);
 
   EXPECT_THAT(response, HasSubstr("HTTP/1.1 200 OK\r\n"));
   EXPECT_THAT(response, Not(HasSubstr("content-length")));

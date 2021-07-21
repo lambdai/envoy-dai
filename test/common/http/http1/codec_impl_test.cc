@@ -448,7 +448,6 @@ TEST_P(Http1ServerConnectionImplTest, UnsupportedEncoding) {
   EXPECT_EQ(status.message(), "http/1.1 protocol error: unsupported transfer encoding");
 }
 
-
 // Verify that data in the two body chunks is merged before the call to decodeData.
 TEST_P(Http1ServerConnectionImplTest, ChunkedBody) {
   initialize();
@@ -2498,7 +2497,23 @@ TEST_P(Http1ClientConnectionImplTest, ResponseWithTrailers) {
   EXPECT_TRUE(status.ok());
 }
 
+// Verify that double chunked header is rejected by default.
+TEST_P(Http1ClientConnectionImplTest, DoubleChunkedIsRejected) {
+  initialize();
+  NiceMock<MockResponseDecoder> response_decoder;
+  Http::RequestEncoder& request_encoder = codec_->newStream(response_decoder);
+  TestRequestHeaderMapImpl headers{{":method", "GET"}, {":path", "/"}, {":authority", "host"}};
+  request_encoder.encodeHeaders(headers, true);
 
+  Buffer::OwnedImpl response("HTTP/1.1 200 OK\r\n"
+                             "transfer-encoding: chunked, chunked\r\n\r\n"
+                             "b\r\nHello "
+                             "World\r\n0\r\nhello: world\r\nsecond: header\r\n\r\n");
+  auto status = codec_->dispatch(response);
+  EXPECT_FALSE(status.ok());
+}
+
+// Verify that `TE: chunked, chunked` is handled as single chunked.
 TEST_P(Http1ClientConnectionImplTest, DoubleChunkedBody1) {
   TestScopedRuntime scoped_runtime;
   Runtime::LoaderSingleton::getExisting()->mergeValues(
@@ -2509,15 +2524,15 @@ TEST_P(Http1ClientConnectionImplTest, DoubleChunkedBody1) {
   TestRequestHeaderMapImpl headers{{":method", "GET"}, {":path", "/"}, {":authority", "host"}};
   request_encoder.encodeHeaders(headers, true);
 
-  Buffer::OwnedImpl response("HTTP/1.1 200 OK\r\n\r\ntransfer-encoding: chunked, chunked\r\n\r\nb\r\nHello "
-                             "World\r\n0\r\nhello: world\r\nsecond: header\r\n\r\n");
+  Buffer::OwnedImpl response(
+      "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked, chunked\r\n\r\nb\r\nHello "
+      "World\r\n0\r\nhello: world\r\nsecond: header\r\n\r\n");
   auto status = codec_->dispatch(response);
   EXPECT_EQ(0UL, response.length());
   EXPECT_TRUE(status.ok());
-
 }
 
-
+// Verify that two `TE: chunked` headers are handled as single chunked.
 TEST_P(Http1ClientConnectionImplTest, DoubleChunkedBody2) {
   TestScopedRuntime scoped_runtime;
   Runtime::LoaderSingleton::getExisting()->mergeValues(
@@ -2528,7 +2543,9 @@ TEST_P(Http1ClientConnectionImplTest, DoubleChunkedBody2) {
   TestRequestHeaderMapImpl headers{{":method", "GET"}, {":path", "/"}, {":authority", "host"}};
   request_encoder.encodeHeaders(headers, true);
 
-  Buffer::OwnedImpl response("HTTP/1.1 200 OK\r\n\r\ntransfer-encoding: chunked\r\ntransfer-encoding: chunked\r\n\r\nb\r\nHello "
+  Buffer::OwnedImpl response("HTTP/1.1 200 OK\r\n"
+                             "transfer-encoding: chunked\r\n"
+                             "transfer-encoding: chunked\r\n\r\nb\r\nHello "
                              "World\r\n0\r\nhello: world\r\nsecond: header\r\n\r\n");
   auto status = codec_->dispatch(response);
   EXPECT_EQ(0UL, response.length());
