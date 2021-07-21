@@ -92,6 +92,8 @@ constexpr const char* runtime_features[] = {
     "envoy.reloadable_features.treat_upstream_connect_timeout_as_connect_failure",
     "envoy.reloadable_features.unify_grpc_handling",
     "envoy.restart_features.use_apple_api_for_dns_lookups",
+    // Support double chunked TE.
+    "envoy.reloadable_features.reject_unsupported_transfer_encodings",
 };
 
 // This is a section for officially sanctioned runtime features which are too

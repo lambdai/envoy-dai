@@ -2497,6 +2497,61 @@ TEST_P(Http1ClientConnectionImplTest, ResponseWithTrailers) {
   EXPECT_TRUE(status.ok());
 }
 
+// Verify that double chunked header is rejected by default.
+TEST_P(Http1ClientConnectionImplTest, DoubleChunkedIsRejected) {
+  initialize();
+  NiceMock<MockResponseDecoder> response_decoder;
+  Http::RequestEncoder& request_encoder = codec_->newStream(response_decoder);
+  TestRequestHeaderMapImpl headers{{":method", "GET"}, {":path", "/"}, {":authority", "host"}};
+  request_encoder.encodeHeaders(headers, true);
+
+  Buffer::OwnedImpl response("HTTP/1.1 200 OK\r\n"
+                             "transfer-encoding: chunked, chunked\r\n\r\n"
+                             "b\r\nHello "
+                             "World\r\n0\r\nhello: world\r\nsecond: header\r\n\r\n");
+  auto status = codec_->dispatch(response);
+  EXPECT_FALSE(status.ok());
+}
+
+// Verify that `TE: chunked, chunked` is handled as single chunked.
+TEST_P(Http1ClientConnectionImplTest, DoubleChunkedBody1) {
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.reject_unsupported_transfer_encodings", "false"}});
+  initialize();
+  NiceMock<MockResponseDecoder> response_decoder;
+  Http::RequestEncoder& request_encoder = codec_->newStream(response_decoder);
+  TestRequestHeaderMapImpl headers{{":method", "GET"}, {":path", "/"}, {":authority", "host"}};
+  request_encoder.encodeHeaders(headers, true);
+
+  Buffer::OwnedImpl response(
+      "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked, chunked\r\n\r\nb\r\nHello "
+      "World\r\n0\r\nhello: world\r\nsecond: header\r\n\r\n");
+  auto status = codec_->dispatch(response);
+  EXPECT_EQ(0UL, response.length());
+  EXPECT_TRUE(status.ok());
+}
+
+// Verify that two `TE: chunked` headers are handled as single chunked.
+TEST_P(Http1ClientConnectionImplTest, DoubleChunkedBody2) {
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.reject_unsupported_transfer_encodings", "false"}});
+  initialize();
+  NiceMock<MockResponseDecoder> response_decoder;
+  Http::RequestEncoder& request_encoder = codec_->newStream(response_decoder);
+  TestRequestHeaderMapImpl headers{{":method", "GET"}, {":path", "/"}, {":authority", "host"}};
+  request_encoder.encodeHeaders(headers, true);
+
+  Buffer::OwnedImpl response("HTTP/1.1 200 OK\r\n"
+                             "transfer-encoding: chunked\r\n"
+                             "transfer-encoding: chunked\r\n\r\nb\r\nHello "
+                             "World\r\n0\r\nhello: world\r\nsecond: header\r\n\r\n");
+  auto status = codec_->dispatch(response);
+  EXPECT_EQ(0UL, response.length());
+  EXPECT_TRUE(status.ok());
+}
+
 TEST_P(Http1ClientConnectionImplTest, GiantPath) {
   initialize();
 
