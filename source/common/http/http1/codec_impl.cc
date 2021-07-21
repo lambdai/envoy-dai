@@ -760,9 +760,9 @@ Envoy::StatusOr<int> ConnectionImpl::onHeadersCompleteBase() {
   // Per https://tools.ietf.org/html/rfc7231#section-4.3.6 a payload with a
   // CONNECT request has no defined semantics, and may be rejected.
   if (request_or_response_headers.TransferEncoding()) {
-    //const absl::string_view encoding = request_or_response_headers.getTransferEncodingValue();
-    if (
-      //!absl::EqualsIgnoreCase(encoding, Headers::get().TransferEncodingValues.Chunked) ||
+    const absl::string_view encoding = request_or_response_headers.getTransferEncodingValue();
+    if ((reject_unsupported_transfer_encodings_ &&
+         !absl::EqualsIgnoreCase(encoding, Headers::get().TransferEncodingValues.Chunked)) ||
         parser_.method == HTTP_CONNECT) {
       error_code_ = Http::Code::NotImplemented;
       RETURN_IF_ERROR(sendProtocolError(Http1ResponseCodeDetails::get().InvalidTransferEncoding));

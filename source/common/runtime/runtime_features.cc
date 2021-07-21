@@ -93,7 +93,6 @@ constexpr const char* runtime_features[] = {
     "envoy.reloadable_features.unify_grpc_handling",
     "envoy.restart_features.use_apple_api_for_dns_lookups",
     // ASM only
-    "envoy.reloadable_features.reject_unsupported_transfer_encodings",
 };
 
 // This is a section for officially sanctioned runtime features which are too
@@ -114,6 +113,9 @@ constexpr const char* disabled_runtime_features[] = {
     "envoy.reloadable_features.new_tcp_connection_pool",
     // Sentinel and test flag.
     "envoy.reloadable_features.test_feature_false",
+
+        "envoy.reloadable_features.reject_unsupported_transfer_encodings",
+
 };
 
 RuntimeFeatures::RuntimeFeatures() {
