@@ -228,7 +228,7 @@ InternalHttpConnPoolImplBase::InternalHttpConnPoolImplBase(
   ASSERT(!protocols.empty());
 }
 
-HttpConnPoolImplBase::~InternalHttpConnPoolImplBase() { destructAllConnections(); }
+InternalHttpConnPoolImplBase::~InternalHttpConnPoolImplBase() { destructAllConnections(); }
 
 ConnectionPool::Cancellable*
 InternalHttpConnPoolImplBase::newStream(Http::ResponseDecoder& response_decoder,

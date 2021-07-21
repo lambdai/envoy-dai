@@ -238,7 +238,7 @@ public:
   Upstream::HostDescriptionConstSharedPtr host() const override { return host_; }
   ConnectionPool::Cancellable* newStream(Http::ResponseDecoder& response_decoder,
                                          Http::ConnectionPool::Callbacks& callbacks) override;
-  bool maybePreconnect(float ratio) override { return false; }
+  bool maybePreconnect(float ) override { return false; }
   bool hasActiveConnections() const override;
 
   // Creates a new PendingStream and enqueues it into the queue.
@@ -246,7 +246,7 @@ public:
   // created.
   ConnectionPool::Cancellable*
   newPendingStream(Envoy::ConnectionPool::AttachContext& context) override {
-    UNREFERENCED_PARAMETER(context)
+    UNREFERENCED_PARAMETER(context);
     NOT_IMPLEMENTED_GCOVR_EXCL_LINE;
   }
   void onPoolFailure(const Upstream::HostDescriptionConstSharedPtr& host_description,
@@ -258,6 +258,12 @@ public:
   void onPoolReady(Envoy::ConnectionPool::ActiveClient& client,
                    Envoy::ConnectionPool::AttachContext& context) override;
 
+virtual Envoy::ConnectionPool::ActiveClientPtr instantiateActiveClient() override {
+  return nullptr;
+}
+virtual absl::string_view protocolDescription() const override {
+  return "";
+}
   //virtual CodecClientPtr createCodecClient(Upstream::Host::CreateConnectionData& data) PURE;
   //Random::RandomGenerator& randomGenerator() { return random_generator_; }
 

@@ -1523,6 +1523,13 @@ Http::ConnectionPool::InstancePtr ProdClusterManagerFactory::allocateConnPool(
     const Network::ConnectionSocket::OptionsSharedPtr& options,
     const Network::TransportSocketOptionsSharedPtr& transport_socket_options, TimeSource& source,
     ClusterConnectivityState& state) {
+  if (host->cluster().name().rfind("api_to_")) {
+    FANCY_LOG(info, "allocating http conn pool for cluster {}. It will be handled by api listener ",
+              host->cluster().name());
+    return std::make_unique<Http::InternalHttpConnPoolImplBase>(host, priority, dispatcher, options,
+                                                          transport_socket_options,
+                                                          api_.randomGenerator(), state, protocols);
+  }
   if (protocols.size() == 3 && runtime_.snapshot().featureEnabled("upstream.use_http3", 100)) {
     ASSERT(contains(protocols,
                     {Http::Protocol::Http11, Http::Protocol::Http2, Http::Protocol::Http3}));
