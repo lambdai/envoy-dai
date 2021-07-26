@@ -156,6 +156,8 @@ Network::SocketSharedPtr ListenSocketFactoryImpl::createListenSocketAndApplyOpti
 }
 
 Network::SocketSharedPtr ListenSocketFactoryImpl::getListenSocket(uint32_t worker_index) {
+  ENVOY_LOG(warn, "getListenSocket {} of {} returns socket {}", worker_index, sockets_.size(),
+            sockets_[worker_index] == nullptr ? "nullptr" : "notnullptr");
   // Per the TODO above, sockets at this point can never be null. That only happens in the
   // config validation path.
   ASSERT(worker_index < sockets_.size() && sockets_[worker_index] != nullptr);

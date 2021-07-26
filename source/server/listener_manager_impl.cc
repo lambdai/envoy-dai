@@ -979,6 +979,11 @@ void ListenerManagerImpl::setNewOrDrainingSocketFactory(
   auto existing_draining_listener = std::find_if(
       draining_listeners_.cbegin(), draining_listeners_.cend(),
       [&listener](const DrainingListener& draining_listener) {
+        RELEASE_ASSERT(draining_listener.listener_ != nullptr,
+                       "draining_listener does not contain listener");
+        RELEASE_ASSERT(
+            draining_listener.listener_->listenSocketFactory().getListenSocket(0) != nullptr,
+            fmt::format("nullptr listener found at index 0 name={}", draining_listener.listener_->name()));
         return draining_listener.listener_->listenSocketFactory().getListenSocket(0)->isOpen() &&
                listener.hasCompatibleAddress(*draining_listener.listener_);
       });
