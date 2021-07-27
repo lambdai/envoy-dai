@@ -65,6 +65,7 @@ envoy_cc_library(
     name = "connection_handler_lib",
     deps = [
         ":active_tcp_listener",
+        ":active_internal_listener",
         ":active_udp_listener",
         ":connection_handler_impl",
     ],
@@ -134,6 +135,32 @@ envoy_cc_library(
         "//source/server:active_listener_base",
     ],
 )
+
+envoy_cc_library(
+    name = "active_internal_listener",
+    srcs = ["active_internal_listener.cc"],
+    hdrs = [
+        "active_internal_listener.h",
+    ],
+    deps = [
+        ":active_stream_listener_base",
+        ":active_tcp_socket",
+        "//envoy/common:time_interface",
+        "//envoy/event:deferred_deletable",
+        "//envoy/event:dispatcher_interface",
+        "//envoy/network:connection_handler_interface",
+        "//envoy/network:connection_interface",
+        "//envoy/network:listen_socket_interface",
+        "//envoy/network:listener_interface",
+        "//envoy/server:listener_manager_interface",
+        "//source/common/common:assert_lib",
+        "//source/common/common:linked_object",
+        "//source/common/network:connection_lib",
+        "//source/common/stats:timespan_lib",
+        "//source/server:active_listener_base",
+    ],
+)
+
 
 envoy_cc_library(
     name = "active_udp_listener",

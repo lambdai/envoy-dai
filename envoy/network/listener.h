@@ -454,5 +454,24 @@ public:
 
 using UdpListenerWorkerRouterPtr = std::unique_ptr<UdpListenerWorkerRouter>;
 
+
+class InternalListenerCallbacks {
+public:
+  virtual ~InternalListenerCallbacks() = default;
+
+  /**
+   * Called when a new connection is accepted.
+   * @param socket supplies the socket that is moved into the callee.
+   */
+  virtual void onAccept(ConnectionSocketPtr&& socket) PURE;
+};
+using InternalListenerCallbacksOptRef =
+    absl::optional<std::reference_wrapper<InternalListenerCallbacks>>;
+
+class InternalListener {};
+
+using InternalListenerPtr = std::unique_ptr<InternalListener>;
+using InternalListenerOptRef = absl::optional<std::reference_wrapper<InternalListener>>;
+
 } // namespace Network
 } // namespace Envoy
