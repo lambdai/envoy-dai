@@ -27,56 +27,11 @@
 namespace Envoy {
 namespace Server {
 
-struct ActiveInternalConnection;
-using ActiveInternalConnectionPtr = std::unique_ptr<ActiveInternalConnection>;
-
-class ActiveInternalConnections;
-using ActiveInternalConnectionsPtr = std::unique_ptr<ActiveInternalConnections>;
-
-class ActiveInternalListener;
-/**
- * Wrapper for a group of active connections which are attached to the same filter chain context.
- */
-class ActiveInternalConnections : public Event::DeferredDeletable {
-public:
-  ActiveInternalConnections(ActiveInternalListener& listener,
-                            const Network::FilterChain& filter_chain);
-  ~ActiveInternalConnections() override;
-
-  // Listener filter chain pair is the owner of the connections.
-  ActiveInternalListener& listener_;
-  const Network::FilterChain& filter_chain_;
-  // Owned connections.
-  std::list<ActiveInternalConnectionPtr> connections_;
-};
-
-/**
- * Wrapper for an active internal connection owned by this handler.
- */
-struct ActiveInternalConnection : LinkedObject<ActiveInternalConnection>,
-                                  public Event::DeferredDeletable,
-                                  public Network::ConnectionCallbacks {
-  ActiveInternalConnection(ActiveInternalConnections& active_connections,
-                           Network::ConnectionPtr&& new_connection, TimeSource& time_system,
-                           std::unique_ptr<StreamInfo::StreamInfo>&& stream_info);
-  ~ActiveInternalConnection() override;
-
-  using CollectionType = ActiveInternalConnections;
-
-  // Network::ConnectionCallbacks
-  void onEvent(Network::ConnectionEvent event) override;
-  void onAboveWriteBufferHighWatermark() override {}
-  void onBelowWriteBufferLowWatermark() override {}
-
-  std::unique_ptr<StreamInfo::StreamInfo> stream_info_;
-  ActiveInternalConnections& active_connections_;
-  Network::ConnectionPtr connection_;
-  Stats::TimespanPtr conn_length_;
-};
-
+using ActiveInternalConnections = ActiveConnections;
+using ActiveInternalConnectionPtr = std::unique_ptr<ActiveTcpConnection>;
 class ActiveInternalListener :
     // stash(lambdai): remove template
-    public TypedActiveStreamListenerBase<ActiveInternalConnection>,
+    public ActiveStreamListenerBase,
     public Network::InternalListenerCallbacks {
 public:
   ActiveInternalListener(Network::ConnectionHandler& conn_handler, Event::Dispatcher& dispatcher,

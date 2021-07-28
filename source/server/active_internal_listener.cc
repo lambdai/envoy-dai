@@ -9,17 +9,22 @@
 namespace Envoy {
 namespace Server {
 
+using ActiveInternalConnection = ActiveTcpConnection;
+using ActiveInternalConnectionPtr = std::unique_ptr<ActiveTcpConnection>;
+using ActiveInternalConnections = ActiveConnections;
+using ActiveInternalConnectionsPtr = std::unique_ptr<ActiveInternalConnections>;
+
 ActiveInternalListener::ActiveInternalListener(Network::ConnectionHandler& conn_handler,
                                                Event::Dispatcher& dispatcher,
                                                Network::ListenerConfig& config)
-    : TypedActiveStreamListenerBase<ActiveInternalConnection>(
+    : ActiveStreamListenerBase(
           conn_handler, dispatcher,
           std::make_unique<ActiveInternalListener::NetworkInternalListener>(), config) {}
 ActiveInternalListener::ActiveInternalListener(Network::ConnectionHandler& conn_handler,
                                                Event::Dispatcher& dispatcher,
                                                Network::ListenerPtr listener,
                                                Network::ListenerConfig& config)
-    : TypedActiveStreamListenerBase<ActiveInternalConnection>(conn_handler, dispatcher,
+    : ActiveStreamListenerBase(conn_handler, dispatcher,
                                                               std::move(listener), config) {}
 
 ActiveInternalListener::~ActiveInternalListener() {   
@@ -71,51 +76,51 @@ void ActiveInternalListener::updateListenerConfig(Network::ListenerConfig& confi
   config_ = &config;
 }
 
-ActiveInternalConnections::ActiveInternalConnections(ActiveInternalListener& listener,
-                                                     const Network::FilterChain& filter_chain)
-    : listener_(listener), filter_chain_(filter_chain) {}
+// ActiveInternalConnections::ActiveInternalConnections(ActiveInternalListener& listener,
+//                                                      const Network::FilterChain& filter_chain)
+//     : listener_(listener), filter_chain_(filter_chain) {}
 
-ActiveInternalConnections::~ActiveInternalConnections() {
-  // connections should be defer deleted already.
-  ASSERT(connections_.empty());
-}
+// ActiveInternalConnections::~ActiveInternalConnections() {
+//   // connections should be defer deleted already.
+//   ASSERT(connections_.empty());
+// }
 
-ActiveInternalConnection::ActiveInternalConnection(
-    ActiveInternalConnections& active_connections, Network::ConnectionPtr&& new_connection,
-    TimeSource& time_source, std::unique_ptr<StreamInfo::StreamInfo>&& stream_info)
-    : stream_info_(std::move(stream_info)), active_connections_(active_connections),
-      connection_(std::move(new_connection)),
-      conn_length_(new Stats::HistogramCompletableTimespanImpl(
-          active_connections_.listener_.stats_.downstream_cx_length_ms_, time_source)) {
-  // We just universally set no delay on connections. Theoretically we might at some point want
-  // to make this configurable.
-  connection_->noDelay(true);
-  auto& listener = active_connections_.listener_;
-  listener.stats_.downstream_cx_total_.inc();
-  listener.stats_.downstream_cx_active_.inc();
-  listener.per_worker_stats_.downstream_cx_total_.inc();
-  listener.per_worker_stats_.downstream_cx_active_.inc();
+// ActiveInternalConnection::ActiveInternalConnection(
+//     ActiveInternalConnections& active_connections, Network::ConnectionPtr&& new_connection,
+//     TimeSource& time_source, std::unique_ptr<StreamInfo::StreamInfo>&& stream_info)
+//     : stream_info_(std::move(stream_info)), active_connections_(active_connections),
+//       connection_(std::move(new_connection)),
+//       conn_length_(new Stats::HistogramCompletableTimespanImpl(
+//           active_connections_.listener_.stats_.downstream_cx_length_ms_, time_source)) {
+//   // We just universally set no delay on connections. Theoretically we might at some point want
+//   // to make this configurable.
+//   connection_->noDelay(true);
+//   auto& listener = active_connections_.listener_;
+//   listener.stats_.downstream_cx_total_.inc();
+//   listener.stats_.downstream_cx_active_.inc();
+//   listener.per_worker_stats_.downstream_cx_total_.inc();
+//   listener.per_worker_stats_.downstream_cx_active_.inc();
 
-  // Active connections on the handler (not listener). The per listener connections have already
-  // been incremented at this point either via the connection balancer or in the socket accept
-  // path if there is no configured balancer.
-  listener.parent_.incNumConnections();
-}
+//   // Active connections on the handler (not listener). The per listener connections have already
+//   // been incremented at this point either via the connection balancer or in the socket accept
+//   // path if there is no configured balancer.
+//   listener.parent_.incNumConnections();
+// }
 
-ActiveInternalConnection::~ActiveInternalConnection() {
-  ActiveInternalListener::emitLogs(*active_connections_.listener_.config_, *stream_info_);
-  auto& listener = active_connections_.listener_;
-  listener.stats_.downstream_cx_active_.dec();
-  listener.stats_.downstream_cx_destroy_.inc();
-  listener.per_worker_stats_.downstream_cx_active_.dec();
-  conn_length_->complete();
+// ActiveInternalConnection::~ActiveInternalConnection() {
+//   ActiveInternalListener::emitLogs(*active_connections_.listener_.config_, *stream_info_);
+//   auto& listener = active_connections_.listener_;
+//   listener.stats_.downstream_cx_active_.dec();
+//   listener.stats_.downstream_cx_destroy_.inc();
+//   listener.per_worker_stats_.downstream_cx_active_.dec();
+//   conn_length_->complete();
 
-  // Active listener connections (not handler).
-  listener.decNumConnections();
+//   // Active listener connections (not handler).
+//   listener.decNumConnections();
 
-  // Active handler connections (not listener).
-  listener.parent_.decNumConnections();
-}
+//   // Active handler connections (not listener).
+//   listener.parent_.decNumConnections();
+// }
 
 void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket) {
   // Unlike tcp listener, no rebalancer is applied and won't call pickTargetHandler to account
@@ -133,14 +138,5 @@ void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket) {
   onSocketAccepted(std::move(active_socket));
 }
 
-// Network::ConnectionCallbacks
-void ActiveInternalConnection::onEvent(Network::ConnectionEvent event) {
-  FANCY_LOG(info, "lambdai: internal connection on event {}", static_cast<int>(event));
-  // Any event leads to destruction of the connection.
-  if (event == Network::ConnectionEvent::LocalClose ||
-      event == Network::ConnectionEvent::RemoteClose) {
-    active_connections_.listener_.removeConnection(*this);
-  }
-}
 } // namespace Server
 } // namespace Envoy

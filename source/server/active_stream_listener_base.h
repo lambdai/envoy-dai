@@ -11,6 +11,7 @@
 #include "envoy/network/connection_handler.h"
 #include "envoy/network/listener.h"
 #include "envoy/stream_info/stream_info.h"
+#include "envoy/stats/timespan.h"
 
 #include "source/common/common/linked_object.h"
 #include "source/server/active_listener_base.h"
@@ -18,6 +19,47 @@
 
 namespace Envoy {
 namespace Server {
+
+
+struct ActiveTcpConnection;
+
+/**
+ * Wrapper for a group of active connections which are attached to the same filter chain context.
+ */
+class ActiveConnections : public Event::DeferredDeletable {
+public:
+  ActiveConnections(ActiveStreamListenerBase& listener, const Network::FilterChain& filter_chain);
+  ~ActiveConnections() override;
+
+  // listener filter chain pair is the owner of the connections
+  ActiveStreamListenerBase& listener_;
+  const Network::FilterChain& filter_chain_;
+  // Owned connections
+  std::list<std::unique_ptr<ActiveTcpConnection>> connections_;
+};
+
+/**
+ * Wrapper for an active TCP connection owned by this handler.
+ */
+struct ActiveTcpConnection : LinkedObject<ActiveTcpConnection>,
+                             public Event::DeferredDeletable,
+                             public Network::ConnectionCallbacks,
+                             Logger::Loggable<Logger::Id::conn_handler> {
+  ActiveTcpConnection(ActiveConnections& active_connections,
+                      Network::ConnectionPtr&& new_connection, TimeSource& time_system,
+                      std::unique_ptr<StreamInfo::StreamInfo>&& stream_info);
+  ~ActiveTcpConnection() override;
+  using CollectionType = ActiveConnections;
+  // Network::ConnectionCallbacks
+  void onEvent(Network::ConnectionEvent event) override;
+  void onAboveWriteBufferHighWatermark() override {}
+  void onBelowWriteBufferLowWatermark() override {}
+
+  std::unique_ptr<StreamInfo::StreamInfo> stream_info_;
+  ActiveConnections& active_connections_;
+  Network::ConnectionPtr connection_;
+  Stats::TimespanPtr conn_length_;
+};
 
 // The base class of the stream listener. It owns listener filter handling of active sockets.
 // After the active socket passes all the listener filters, a server connection is created. The
@@ -72,10 +114,6 @@ public:
    */
   const std::list<std::unique_ptr<ActiveTcpSocket>>& sockets() const { return sockets_; }
 
-  /**
-   * Schedule removal and destruction of all active connections owned by a filter chain.
-   */
-  virtual void removeFilterChain(const Network::FilterChain* filter_chain) PURE;
 
   virtual Network::BalancedConnectionHandlerOptRef
   getBalancedHandlerByAddress(const Network::Address::Instance& address) PURE;
@@ -133,28 +171,32 @@ protected:
 
 private:
   Event::Dispatcher& dispatcher_;
-};
+// };
 
-// The listener that handles the composition type ActiveConnectionCollection. This mixin-ish class
-// provides the connection removal helper and the filter chain removal helper. Meanwhile, the
-// derived class can use the concrete active connection type.
-template <typename ActiveConnectionType>
-class TypedActiveStreamListenerBase : public ActiveStreamListenerBase {
+// // The listener that handles the composition type ActiveConnectionCollection. This mixin-ish class
+// // provides the connection removal helper and the filter chain removal helper. Meanwhile, the
+// // derived class can use the concrete active connection type.
+// template <typename ActiveConnectionType>
+// class TypedActiveStreamListenerBase : public ActiveStreamListenerBase {
+// public:
+//   using ActiveConnectionCollectionType = typename ActiveConnectionType::CollectionType;
+//   TypedActiveStreamListenerBase(Network::ConnectionHandler& parent, Event::Dispatcher& dispatcher,
+//                                 Network::ListenerPtr&& listener, Network::ListenerConfig& config)
+//       : ActiveStreamListenerBase(parent, dispatcher, std::move(listener), config) {}
+//   using ActiveConnectionPtr = std::unique_ptr<ActiveConnectionType>;
+//   using ActiveConnectionCollectionPtr = std::unique_ptr<ActiveConnectionCollectionType>;
+
+using ActiveConnectionPtr = std::unique_ptr<ActiveTcpConnection>;
+using ActiveConnectionCollectionPtr = std::unique_ptr<ActiveConnections>;
+
 public:
-  using ActiveConnectionCollectionType = typename ActiveConnectionType::CollectionType;
-  TypedActiveStreamListenerBase(Network::ConnectionHandler& parent, Event::Dispatcher& dispatcher,
-                                Network::ListenerPtr&& listener, Network::ListenerConfig& config)
-      : ActiveStreamListenerBase(parent, dispatcher, std::move(listener), config) {}
-  using ActiveConnectionPtr = std::unique_ptr<ActiveConnectionType>;
-  using ActiveConnectionCollectionPtr = std::unique_ptr<ActiveConnectionCollectionType>;
-
   /**
    * Remove and destroy an active connection.
    * @param connection supplies the connection to remove.
    */
-  void removeConnection(ActiveConnectionType& connection) {
+  void removeConnection(ActiveTcpConnection& connection) {
     ENVOY_CONN_LOG(debug, "adding to cleanup list", *connection.connection_);
-    ActiveConnectionCollectionType& active_connections = connection.active_connections_;
+    ActiveConnections& active_connections = connection.active_connections_;
     ActiveConnectionPtr removed = connection.removeFromList(active_connections.connections_);
     dispatcher().deferredDelete(std::move(removed));
     // Delete map entry only iff connections becomes empty.
@@ -172,7 +214,10 @@ public:
   }
 
 protected:
-  void removeFilterChain(const Network::FilterChain* filter_chain) override {
+  /**
+   * Schedule removal and destruction of all active connections owned by a filter chain.
+   */
+  void removeFilterChain(const Network::FilterChain* filter_chain) {
     auto iter = connections_by_context_.find(filter_chain);
     if (iter == connections_by_context_.end()) {
       // It is possible when listener is stopping.
