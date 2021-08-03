@@ -53,6 +53,10 @@ message FaultDelay {
 
     // Fault delays are controlled via an HTTP header (if applicable).
     HeaderDelay header_delay = 5;
+
+    google.protobuf.Duration connection_delay = 6;
+
+    google.protobuf.Duration bytes_delay = 7;
   }
 
   // The percentage of operations/connections/requests on which the delay will be injected.
