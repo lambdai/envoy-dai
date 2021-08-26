@@ -15,6 +15,7 @@
 #include "envoy/upstream/health_check_host_monitor.h"
 #include "envoy/upstream/upstream.h"
 
+#include "source/common/network/utility.h"
 #include "source/common/common/assert.h"
 #include "source/common/common/cleanup.h"
 #include "source/common/common/empty_string.h"
@@ -510,6 +511,36 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
 
   transport_socket_options_ = Network::TransportSocketOptionsUtility::fromFilterState(
       *callbacks_->streamInfo().filterState());
+  // POC
+  const auto& cluster_name = cluster_->name();
+  FANCY_LOG(debug, "lambdai: prepare remote addr: {} ", cluster_name);
+  if (auto pos = cluster_name.find_last_of('|'); pos != cluster_name.npos) {
+    FANCY_LOG(debug, "lambdai: parsing remote addr: {} ", cluster_name.substr(pos + 1));
+    auto remote_address = Network::Utility::parseInternetAddressAndPortNoThrow(
+        cluster_name.substr(pos + 1), false /* v6only */);
+    if (remote_address != nullptr) {
+      Network::ProxyProtocolData proxy_protocol_options{
+          // Network::Utility::parseInternetAddressAndPortNoThrow("127.0.0.1:0"),
+          callbacks_->connection()->addressProvider().remoteAddress(), remote_address};
+
+      // cluster_.hasProxyProtocolMeta()) {
+      // type: const Network::Address::InstanceConstSharedPtr src_addr_;
+      // TODO: fill by
+
+      if (transport_socket_options_ != nullptr) {
+        transport_socket_options_ = std::make_shared<Network::TransportSocketOptionsImpl>(
+            transport_socket_options_->serverNameOverride().value_or(""),
+            std::vector<std::string>{transport_socket_options_->verifySubjectAltNameListOverride()},
+            std::vector<std::string>{transport_socket_options_->applicationProtocolListOverride()},
+            std::vector<std::string>{transport_socket_options_->applicationProtocolFallback()},
+            proxy_protocol_options);
+      } else {
+        transport_socket_options_ = std::make_shared<Network::TransportSocketOptionsImpl>(
+            "", std::vector<std::string>{}, std::vector<std::string>{}, std::vector<std::string>{},
+            proxy_protocol_options);
+      }
+    }
+  }
 
   auto has_options_from_downstream =
       downstreamConnection() && downstreamConnection()
@@ -641,7 +672,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   }
 
   return Http::FilterHeadersStatus::StopIteration;
-}
+} // namespace Router
 
 std::unique_ptr<GenericConnPool>
 Filter::createConnPool(Upstream::ThreadLocalCluster& thread_local_cluster) {
