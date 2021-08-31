@@ -440,6 +440,35 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
     transport_socket_options_ = Network::TransportSocketOptionsUtility::fromFilterState(
         downstreamConnection()->streamInfo().filterState());
 
+    // Start of PoC
+    const auto& cluster_name = cluster->name();
+    if (auto pos = cluster_name.find_last_of('|'); pos != cluster_name.npos) {
+      auto remote_address = Network::Utility::parseInternetAddressAndPortNoThrow(
+          cluster_name.substr(pos + 1), false /* v6only */);
+      if (remote_address != nullptr) {
+        Network::ProxyProtocolData proxy_protocol_options{
+            read_callbacks_->connection().addressProvider().remoteAddress(), remote_address};
+
+        if (transport_socket_options_ != nullptr) {
+          transport_socket_options_ = std::make_shared<Network::TransportSocketOptionsImpl>(
+              transport_socket_options_->serverNameOverride().value_or(""),
+              std::vector<std::string>{
+                  transport_socket_options_->verifySubjectAltNameListOverride()},
+              std::vector<std::string>{
+                  transport_socket_options_->applicationProtocolListOverride()},
+              std::vector<std::string>{transport_socket_options_->applicationProtocolFallback()},
+              proxy_protocol_options);
+        } else {
+          transport_socket_options_ = std::make_shared<Network::TransportSocketOptionsImpl>(
+              "", std::vector<std::string>{}, std::vector<std::string>{},
+              std::vector<std::string>{}, proxy_protocol_options);
+        }
+        ENVOY_CONN_LOG(debug, "RemoteProxy: using proxy protocol to upstream {}",
+                       read_callbacks_->connection(), remote_address->asStringView());
+      }
+    }
+    // End of PoC
+
     auto has_options_from_downstream =
         downstreamConnection() && downstreamConnection()
                                       ->streamInfo()
