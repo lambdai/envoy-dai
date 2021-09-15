@@ -49,6 +49,14 @@ static_resources:
             - header:
                 key: original_address
                 value: "127.0.0.1:9999"
+#                key: original_port
+#                value: "%DOWNSTREAM_LOCAL_PORT%"  # e.g. 80
+#            - header:
+#                key: original_ip
+#                value: "%DOWNSTREAM_LOCAL_ADDRESS_WITHOUT_PORT%" # e.g. 192.168.0.10
+#            - header:    
+#                key: original_address
+#                value: "%DOWNSTREAM_LOCAL_ADDRESS%" # e.g. 192.168.0.10:80
   clusters:
   - name: cluster_0
     connect_timeout: 5s
