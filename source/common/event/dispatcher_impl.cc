@@ -9,6 +9,7 @@
 #include "envoy/api/api.h"
 #include "envoy/common/scope_tracker.h"
 #include "envoy/config/overload/v3/overload.pb.h"
+#include "envoy/network/client_connection_manager.h"
 #include "envoy/network/listen_socket.h"
 #include "envoy/network/listener.h"
 
@@ -16,6 +17,7 @@
 #include "source/common/common/assert.h"
 #include "source/common/common/lock_guard.h"
 #include "source/common/common/thread.h"
+#include "source/common/config/utility.h"
 #include "source/common/event/file_event_impl.h"
 #include "source/common/event/libevent_scheduler.h"
 #include "source/common/event/scaled_range_timer_manager_impl.h"
@@ -153,8 +155,28 @@ DispatcherImpl::createClientConnection(Network::Address::InstanceConstSharedPtr 
                                        Network::TransportSocketPtr&& transport_socket,
                                        const Network::ConnectionSocket::OptionsSharedPtr& options) {
   ASSERT(isThreadSafe());
-  return std::make_unique<Network::ClientConnectionImpl>(*this, address, source_address,
-                                                         std::move(transport_socket), options);
+
+  auto address_type_name = [](const Network::Address::InstanceConstSharedPtr& addr) {
+    ASSERT(addr != nullptr);
+    switch (addr->type()) {
+    // TODO: create IP and
+    case Network::Address::Type::Ip:
+    case Network::Address::Type::Pipe:
+      return "does-not-exist";
+    case Network::Address::Type::EnvoyInternal:
+      return "EnvoyInternal";
+    }
+  };
+  // TODO: register and find by address type instead of name.
+  auto factory = Config::Utility::getFactoryByName<Network::ClientConnectionFactory>(
+      address_type_name(address));
+  if (factory == nullptr) {
+    // get rid of this once the ip and pipe factory is offered.
+    return std::make_unique<Network::ClientConnectionImpl>(*this, address, source_address,
+                                                           std::move(transport_socket), options);
+  }
+  return factory->createClientConnection(*this, address, source_address,
+                                         std::move(transport_socket), options);
 }
 
 Network::DnsResolverSharedPtr DispatcherImpl::createDnsResolver(
