@@ -317,7 +317,9 @@ Network::ClientConnectionPtr HostImpl::createConnection(
   } else {
     connection_options = options;
   }
-  ASSERT(!address->envoyInternalAddress());
+  if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.internal_address")) {
+    ASSERT(!address->envoyInternalAddress());
+  }
   Network::ClientConnectionPtr connection =
       address_list.size() > 1
           ? std::make_unique<Network::HappyEyeballsConnectionImpl>(
