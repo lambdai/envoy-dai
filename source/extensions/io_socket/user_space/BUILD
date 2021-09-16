@@ -74,5 +74,6 @@ envoy_cc_library(
         "//envoy/registry",
         "//source/common/network:connection_lib",
         "//source/common/network:listen_socket_lib",
+        "//source/common/network:internal_socket_option_lib",
     ],
 )

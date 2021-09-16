@@ -55,6 +55,8 @@
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/str_cat.h"
 
+#include "source/common/network/internal_socket_option_impl.h"
+
 namespace Envoy {
 namespace Upstream {
 namespace {
@@ -319,6 +321,17 @@ Network::ClientConnectionPtr HostImpl::createConnection(
   }
   if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.internal_address")) {
     ASSERT(!address->envoyInternalAddress());
+  }
+  if (transport_socket_options->proxyProtocolOptions().has_value()) {
+    if (!connection_options) {
+      connection_options = std::make_shared<Network::ConnectionSocket::Options>();
+    }
+    const auto& pp = transport_socket_options->proxyProtocolOptions().value();
+    connection_options->emplace_back(
+        std::make_shared<Network::InternalSocketOptionImpl>(pp.dst_addr_, pp.src_addr_));
+    FANCY_LOG(warn, "create a internal socket opt, dst_addr_={}, src_addr = {}",
+              pp.dst_addr_ == nullptr ? "nullptr" : pp.dst_addr_->asStringView(),
+              pp.src_addr_ == nullptr ? "nullptr" : pp.src_addr_->asStringView());
   }
   Network::ClientConnectionPtr connection =
       address_list.size() > 1

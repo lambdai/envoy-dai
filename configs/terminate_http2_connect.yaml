@@ -43,7 +43,7 @@ static_resources:
             allow_connect: true
           upgrade_configs:
           - upgrade_type: CONNECT
-  - name: listener_internal_virtual_outbound
+  - name: internal_virtual_outbound
     address:
       envoy_internal_address:
         server_listener_name: internal_virtual_outbound
@@ -124,7 +124,7 @@ static_resources:
     dns_lookup_family: V4_ONLY
     lb_policy: ROUND_ROBIN
     load_assignment:
-      cluster_name: internal_virtual_bound
+      cluster_name: internal_virtual_outbound
       endpoints:
       - lb_endpoints:
         - endpoint:

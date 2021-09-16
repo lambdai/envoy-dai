@@ -17,8 +17,10 @@ void FilterStateImpl::setData(absl::string_view data_name, std::shared_ptr<Objec
     return;
   }
   if (parent_ && parent_->hasDataWithName(data_name)) {
-    throw EnvoyException(
-        "FilterState::setData<T> called twice with conflicting life_span on the same data_name.");
+    //TODO(lambdai): consider using different names or figure out why same name on different life span is not allowed.
+    FANCY_LOG(warn, "FilterState::setData<T> called twice with conflicting life_span on the same data_name {}",  data_name);
+    // throw EnvoyException(
+    //     "FilterState::setData<T> called twice with conflicting life_span on the same data_name.");
   }
   const auto& it = data_storage_.find(data_name);
   if (it != data_storage_.end()) {

@@ -42,6 +42,10 @@
 #include "source/common/stream_info/uint32_accessor_impl.h"
 #include "source/common/tracing/http_tracer_impl.h"
 
+#include "source/common/network/proxy_protocol_filter_state.h"
+#include "source/common/network/address_impl.h"
+#include "source/common/network/utility.h"
+
 namespace Envoy {
 namespace Router {
 namespace {
@@ -539,6 +543,29 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
           std::make_unique<Network::UpstreamSubjectAltNames>(
               std::vector<std::string>{std::string(sni_value)}),
           StreamInfo::FilterState::StateType::Mutable);
+    }
+  }
+
+  // TODO(lambdai): move the hack of extracting original_dst from CONNECT.
+  if (headers.getMethodValue() == "CONNECT") {
+    if (const auto get_result = headers.get(Http::LowerCaseString{"original_address"});
+        !get_result.empty()) {
+      auto ip_port = get_result[0]->value().getStringView();
+
+      auto addr_ptr = Network::Utility::parseInternetAddressAndPortNoThrow(std::string(ip_port));
+      if (addr_ptr != nullptr) {
+        ENVOY_STREAM_LOG(warn, "router decoding original_address and set to ProxyProtocolData:\n{}",
+                         *callbacks_, addr_ptr->asStringView());
+        callbacks_->streamInfo().filterState()->setData(
+            Network::ProxyProtocolFilterState::key(),
+            std::make_unique<Network::ProxyProtocolFilterState>(Network::ProxyProtocolData{
+                callbacks_->connection()->connectionInfoProvider().remoteAddress(), addr_ptr}),
+            StreamInfo::FilterState::StateType::ReadOnly,
+            StreamInfo::FilterState::LifeSpan::Request);
+      } else {
+        ENVOY_STREAM_LOG(warn, "router failed to get original address from connect request headers: {}",
+                         *callbacks_, headers);
+      }
     }
   }
 

@@ -516,6 +516,7 @@ envoy_cc_library(
         "//source/common/runtime:runtime_lib",
         "//source/extensions/filters/network/common:utility_lib",
         "//source/server:transport_socket_config_lib",
+        "//source/common/network:internal_socket_option_lib",
     ],
 )
 

@@ -138,7 +138,10 @@ public:
   ConnectionSocketImpl(IoHandlePtr&& io_handle,
                        const Address::InstanceConstSharedPtr& local_address,
                        const Address::InstanceConstSharedPtr& remote_address)
-      : SocketImpl(std::move(io_handle), local_address, remote_address) {}
+      : SocketImpl(std::move(io_handle), local_address, remote_address) {
+    connection_info_provider_->setLocalAddress(local_address);
+    connection_info_provider_->setRemoteAddress(remote_address);
+  }
 
   ConnectionSocketImpl(Socket::Type type, const Address::InstanceConstSharedPtr& local_address,
                        const Address::InstanceConstSharedPtr& remote_address)

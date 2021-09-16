@@ -509,3 +509,20 @@ envoy_cc_library(
         "//source/common/common:macros",
     ],
 )
+
+envoy_cc_library(
+    name = "internal_socket_option_lib",
+    srcs = ["internal_socket_option_impl.cc"],
+    hdrs = ["internal_socket_option_impl.h"],
+    external_deps = ["abseil_optional"],
+    deps = [
+        ":address_lib",
+        ":socket_lib",
+        ":socket_option_lib",
+        "//envoy/network:listen_socket_interface",
+        "//source/common/api:os_sys_calls_lib",
+        "//source/common/common:assert_lib",
+        "//source/common/common:logger_lib",
+        "@envoy_api//envoy/config/core/v3:pkg_cc_proto",
+    ],
+)

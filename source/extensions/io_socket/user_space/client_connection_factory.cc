@@ -5,6 +5,7 @@
 #include "source/common/network/address_impl.h"
 #include "source/common/network/connection_impl.h"
 #include "source/common/network/listen_socket_impl.h"
+#include "source/common/network/internal_socket_option_impl.h"
 #include "source/extensions/io_socket/user_space/io_handle_impl.h"
 
 namespace Envoy {
@@ -37,16 +38,22 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
     auto internal_listener = internal_listener_manager.value().get().findByAddress(address);
     if (internal_listener.has_value()) {
       auto original_address = address;
-      // if (options != nullptr) {
-      //   for (const auto& opt : *options) {
-      //     auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
-      //     if (internal_opt != nullptr) {
-      //       original_address = internal_opt->original_remote_address_;
-      //     }
-      //   }
-      // }
+      FANCY_LOG(warn, "creating accept socket: local = {}, remote = {}",
+                original_address == nullptr ? "nullptr" : original_address->asStringView(),
+                source_address == nullptr ? "nullptr" : source_address->asStringView());
       auto accepted_socket = std::make_unique<Network::AcceptedSocketImpl>(
-          std::move(io_handle_server), original_address, source_address);
+          std::move(io_handle_server), original_address, std::make_shared<Network::Address::EnvoyInternalInstance>("source_internal"));
+
+      if (options != nullptr) {
+        for (const auto& opt : *options) {
+          auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
+          if (internal_opt != nullptr) {
+            internal_opt->setOption(*accepted_socket,
+                                    envoy::config::core::v3::SocketOption::SocketState::
+                                        SocketOption_SocketState_STATE_BOUND);
+          }
+        }
+      }
       // TODO: also check if disabled
       internal_listener.value().get().onAccept(std::move(accepted_socket));
       FANCY_LOG(debug, "lambdai: find internal listener {} ", address->asStringView());
