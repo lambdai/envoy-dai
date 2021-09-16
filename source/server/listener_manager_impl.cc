@@ -586,7 +586,13 @@ ListenerManagerImpl::listeners(ListenerState state) {
 
 bool ListenerManagerImpl::doFinalPreWorkerListenerInit(ListenerImpl& listener) {
   TRY_ASSERT_MAIN_THREAD {
-    listener.listenSocketFactory().doFinalPreWorkerInit();
+    // TODO(lambdai): clean up or figureout why we need listenSocketfactory for internal and not
+    // bind
+    if (!listener.internalListenerConfig().has_value()) {
+      listener.listenSocketFactory().doFinalPreWorkerInit();
+    } else {
+      FANCY_LOG(warn, "{} for listener {}", __FUNCTION__, listener.name());
+    }
     return true;
   }
   END_TRY
@@ -958,6 +964,10 @@ Network::DrainableFilterChainSharedPtr ListenerFilterChainFactoryBuilder::buildF
 void ListenerManagerImpl::setNewOrDrainingSocketFactory(
     const std::string& name, const envoy::config::core::v3::Address& proto_address,
     ListenerImpl& listener) {
+  if (proto_address.has_envoy_internal_address()) {
+    FANCY_LOG(warn, "do not create socket factory for internal listener");
+    return;
+  }
   // Typically we catch address issues when we try to bind to the same address multiple times.
   // However, for listeners that do not bind we must check to make sure we are not duplicating. This
   // is an edge case and nothing will explicitly break, but there is no possibility that two

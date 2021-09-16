@@ -450,38 +450,6 @@ public:
    * @param socket supplies the socket that is moved into the callee.
    */
   virtual void onAccept(ConnectionSocketPtr&& socket) PURE;
-
-  virtual Event::Dispatcher& dispatcher() PURE;
-};
-using InternalListenerCallbacksOptRef =
-    absl::optional<std::reference_wrapper<InternalListenerCallbacks>>;
-
-class InternalListener {};
-
-using InternalListenerPtr = std::unique_ptr<InternalListener>;
-using InternalListenerOptRef = absl::optional<std::reference_wrapper<InternalListener>>;
-
-class InternalListenerManager {
-public:
-  virtual ~InternalListenerManager() = default;
-  virtual InternalListenerCallbacksOptRef
-  findByAddress(const Address::InstanceConstSharedPtr& listen_address) PURE;
-};
-
-using InternalListenerManagerOptRef =
-    absl::optional<std::reference_wrapper<InternalListenerManager>>;
-
-class InternalListenerCallbacks {
-public:
-  virtual ~InternalListenerCallbacks() = default;
-
-  /**
-   * Called when a new connection is accepted.
-   * @param socket supplies the socket that is moved into the callee.
-   */
-  virtual void onAccept(ConnectionSocketPtr&& socket) PURE;
-
-  // virtual Event::Dispatcher& dispatcher() PURE;
 };
 using InternalListenerCallbacksOptRef =
     absl::optional<std::reference_wrapper<InternalListenerCallbacks>>;
