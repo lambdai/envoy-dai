@@ -322,7 +322,8 @@ Network::ClientConnectionPtr HostImpl::createConnection(
   if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.internal_address")) {
     ASSERT(!address->envoyInternalAddress());
   }
-  if (transport_socket_options->proxyProtocolOptions().has_value()) {
+  // hack: the InternalSocketOptionImpl is way too powerful. Apply it only when the dest address is envoy internal.
+  if (transport_socket_options->proxyProtocolOptions().has_value() && address->envoyInternalAddress() != nullptr) {
     if (!connection_options) {
       connection_options = std::make_shared<Network::ConnectionSocket::Options>();
     }

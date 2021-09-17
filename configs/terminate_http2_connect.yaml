@@ -51,6 +51,25 @@ static_resources:
     bind_to_port: false
     use_original_dst: true
     filter_chains:
+    - filter_chain_match:
+        destination_port: 10000
+      name: port_10000_filter_chain
+      filters:
+      - name: envoy.tcp_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+          stat_prefix: google
+          cluster: service_local
+    - filter_chain_match:
+        destination_port: 9999
+      name: port_9999_filter_chain
+      filters:
+      - name: envoy.tcp_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+          stat_prefix: google
+          cluster: service_facebook
+    - name: default_virtual_outbound_filter_chain
       filters:
       - name: envoy.filters.network.http_connection_manager
         typed_config:
@@ -146,6 +165,21 @@ static_resources:
               socket_address:
                 address: www.google.com
                 port_value: 443
+  - name: service_local
+    connect_timeout: 5s
+    type: LOGICAL_DNS
+    # Comment out the following line to test on v6 networks
+    dns_lookup_family: V4_ONLY
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: service_local
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 10002
   - name: service_facebook
     connect_timeout: 5s
     type: LOGICAL_DNS

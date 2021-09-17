@@ -54,7 +54,7 @@ void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket) {
   incNumConnections();
 
   auto active_socket = std::make_unique<ActiveTcpSocket>(
-      *this, std::move(socket), false /* do not handle off at internal listener */);
+      *this, std::move(socket), false);
   // TODO(lambdai): restore address from either socket options, or from listener config.
   // active_socket->socket_->connectionInfoProvider().restoreLocalAddress(
   //     std::make_shared<Network::Address::Ipv4Instance>("255.255.255.255", 0));

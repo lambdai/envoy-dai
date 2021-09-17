@@ -18,6 +18,10 @@ public:
                            const Network::Address::InstanceConstSharedPtr& local_address)
       : original_remote_address_(remote_address), original_local_address_(local_address) {}
 
+  InternalSocketOptionImpl reverse() const {
+    return InternalSocketOptionImpl(original_local_address_, original_remote_address_);
+  }
+
   // Socket::Option
   bool setOption(Socket& socket,
                  envoy::config::core::v3::SocketOption::SocketState state) const override;

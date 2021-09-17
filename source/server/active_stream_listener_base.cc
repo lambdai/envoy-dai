@@ -39,6 +39,7 @@ void ActiveStreamListenerBase::newConnection(Network::ConnectionSocketPtr&& sock
     socket->close();
     return;
   }
+  FANCY_LOG(warn, "lambai: find filter chain {}", filter_chain->name());
   stream_info->setFilterChainName(filter_chain->name());
   auto transport_socket = filter_chain->transportSocketFactory().createTransportSocket(nullptr);
   auto server_conn_ptr = dispatcher().createServerConnection(

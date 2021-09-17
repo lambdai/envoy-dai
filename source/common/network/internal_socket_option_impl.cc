@@ -12,18 +12,16 @@
 namespace Envoy {
 namespace Network {
 
-
-bool InternalSocketOptionImpl::setOption(
-    Socket& socket, 
-    // NOT ussed
-    envoy::config::core::v3::SocketOption::SocketState ) const {
+bool InternalSocketOptionImpl::setOption(Socket& socket,
+                                         // NOT ussed
+                                         envoy::config::core::v3::SocketOption::SocketState) const {
   socket.connectionInfoProvider().setLocalAddress(original_local_address_);
   socket.connectionInfoProvider().setRemoteAddress(original_remote_address_);
   return true;
 }
 
 absl::optional<Socket::Option::Details> InternalSocketOptionImpl::getOptionDetails(
-    const Socket& , envoy::config::core::v3::SocketOption::SocketState ) const {
+    const Socket&, envoy::config::core::v3::SocketOption::SocketState) const {
   //   if (!option.has_value()) {
   //     return absl::nullopt;
   //   }

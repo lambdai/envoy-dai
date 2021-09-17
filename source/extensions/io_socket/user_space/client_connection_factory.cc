@@ -48,7 +48,7 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
         for (const auto& opt : *options) {
           auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
           if (internal_opt != nullptr) {
-            internal_opt->setOption(*accepted_socket,
+            internal_opt->reverse().setOption(*accepted_socket,
                                     envoy::config::core::v3::SocketOption::SocketState::
                                         SocketOption_SocketState_STATE_BOUND);
           }
