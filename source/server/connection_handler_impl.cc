@@ -7,12 +7,11 @@
 
 #include "source/common/common/logger.h"
 #include "source/common/event/deferred_task.h"
+#include "source/common/network/address_impl.h"
 #include "source/common/network/utility.h"
 #include "source/common/runtime/runtime_features.h"
 #include "source/server/active_internal_listener.h"
 #include "source/server/active_tcp_listener.h"
-
-#include "source/common/network/address_impl.h"
 
 namespace Envoy {
 namespace Server {
@@ -45,8 +44,10 @@ void ConnectionHandlerImpl::addListener(absl::optional<uint64_t> overridden_list
     auto internal_listener = std::make_unique<ActiveInternalListener>(*this, dispatcher(), config);
     details.typed_listener_ = *internal_listener;
     details.listener_ = std::move(internal_listener);
-    //TODO(lambdai): hack internal listener on listener factory
-    listeners_.emplace_back(std::make_shared<Network::Address::EnvoyInternalInstance>(config.name()), std::move(details));
+    // TODO(lambdai): hack internal listener on listener factory
+    listeners_.emplace_back(
+        std::make_shared<Network::Address::EnvoyInternalInstance>(config.name()),
+        std::move(details));
     return;
   } else if (config.listenSocketFactory().socketType() == Network::Socket::Type::Stream) {
     if (overridden_listener.has_value()) {

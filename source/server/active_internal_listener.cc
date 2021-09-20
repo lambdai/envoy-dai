@@ -11,18 +11,20 @@
 namespace Envoy {
 namespace Server {
 
-ActiveInternalListener::ActiveInternalListener(Network::ConnectionHandler& conn_handler,
+ActiveInternalListener::ActiveInternalListener(Network::TcpConnectionHandler& conn_handler,
                                                Event::Dispatcher& dispatcher,
                                                Network::ListenerConfig& config)
     : OwnedActiveStreamListenerBase(
           conn_handler, dispatcher,
-          std::make_unique<ActiveInternalListener::NetworkInternalListener>(), config) {}
+          std::make_unique<ActiveInternalListener::NetworkInternalListener>(), config),
+      tcp_conn_handler_(conn_handler) {}
 
-ActiveInternalListener::ActiveInternalListener(Network::ConnectionHandler& conn_handler,
+ActiveInternalListener::ActiveInternalListener(Network::TcpConnectionHandler& conn_handler,
                                                Event::Dispatcher& dispatcher,
                                                Network::ListenerPtr listener,
                                                Network::ListenerConfig& config)
-    : OwnedActiveStreamListenerBase(conn_handler, dispatcher, std::move(listener), config) {}
+    : OwnedActiveStreamListenerBase(conn_handler, dispatcher, std::move(listener), config),
+      tcp_conn_handler_(conn_handler) {}
 
 ActiveInternalListener::~ActiveInternalListener() {
   is_deleting_ = true;
@@ -53,8 +55,10 @@ void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket) {
   // connections.
   incNumConnections();
 
-  auto active_socket = std::make_unique<ActiveTcpSocket>(
-      *this, std::move(socket), false);
+  auto active_socket =
+      std::make_unique<ActiveTcpSocket>(*this, std::move(socket),
+                                        // TODO(lambdai): read from listener config.
+                                        true);
   // TODO(lambdai): restore address from either socket options, or from listener config.
   // active_socket->socket_->connectionInfoProvider().restoreLocalAddress(
   //     std::make_shared<Network::Address::Ipv4Instance>("255.255.255.255", 0));

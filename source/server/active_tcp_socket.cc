@@ -122,6 +122,9 @@ void ActiveTcpSocket::newConnection() {
 
   if (hand_off_restored_destination_connections_ &&
       socket_->connectionInfoProvider().localAddressRestored()) {
+    // Redirect to internal address is not allowed.
+    ASSERT(socket_->connectionInfoProvider().localAddress()->envoyInternalAddress() == nullptr);
+
     // Find a listener associated with the original destination address.
     new_listener =
         listener_.getBalancedHandlerByAddress(*socket_->connectionInfoProvider().localAddress());
@@ -134,6 +137,13 @@ void ActiveTcpSocket::newConnection() {
     // Note also that we must account for the number of connections properly across both listeners.
     // TODO(mattklein123): See note in ~ActiveTcpSocket() related to making this accounting better.
     listener_.decNumConnections();
+
+    FANCY_LOG(warn, "hand off socket {} from listener {} to a new listener",
+              socket_->connectionInfoProvider().localAddress()->asStringView(),
+              listener_.config_->name());
+
+    // TODO(lambdai): Check if socket_ is build on top of user space handle. onAcceptWorker could
+    // pickup another thread but internal socket is not allowed to migrate among threads.
     new_listener.value().get().onAcceptWorker(std::move(socket_), false, false);
   } else {
     // Set default transport protocol if none of the listener filters did it.

@@ -37,6 +37,7 @@
 #include "source/common/http/utility.h"
 #include "source/common/network/address_impl.h"
 #include "source/common/network/happy_eyeballs_connection_impl.h"
+#include "source/common/network/internal_socket_option_impl.h"
 #include "source/common/network/resolver_impl.h"
 #include "source/common/network/socket_option_factory.h"
 #include "source/common/network/socket_option_impl.h"
@@ -54,8 +55,6 @@
 
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/str_cat.h"
-
-#include "source/common/network/internal_socket_option_impl.h"
 
 namespace Envoy {
 namespace Upstream {
@@ -322,8 +321,10 @@ Network::ClientConnectionPtr HostImpl::createConnection(
   if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.internal_address")) {
     ASSERT(!address->envoyInternalAddress());
   }
-  // hack: the InternalSocketOptionImpl is way too powerful. Apply it only when the dest address is envoy internal.
-  if (transport_socket_options->proxyProtocolOptions().has_value() && address->envoyInternalAddress() != nullptr) {
+  // hack: the InternalSocketOptionImpl is way too powerful. Apply it only when the dest address is
+  // envoy internal.
+  if (transport_socket_options->proxyProtocolOptions().has_value() &&
+      address->envoyInternalAddress() != nullptr) {
     if (!connection_options) {
       connection_options = std::make_shared<Network::ConnectionSocket::Options>();
     }

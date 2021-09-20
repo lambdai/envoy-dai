@@ -17,6 +17,7 @@ bool InternalSocketOptionImpl::setOption(Socket& socket,
                                          envoy::config::core::v3::SocketOption::SocketState) const {
   socket.connectionInfoProvider().setLocalAddress(original_local_address_);
   socket.connectionInfoProvider().setRemoteAddress(original_remote_address_);
+  socket.connectionInfoProvider().restoreLocalAddress(original_local_address_);
   return true;
 }
 

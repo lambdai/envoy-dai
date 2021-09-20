@@ -29,9 +29,9 @@ namespace Server {
 class ActiveInternalListener : public OwnedActiveStreamListenerBase,
                                public Network::InternalListenerCallbacks {
 public:
-  ActiveInternalListener(Network::ConnectionHandler& conn_handler, Event::Dispatcher& dispatcher,
+  ActiveInternalListener(Network::TcpConnectionHandler& conn_handler, Event::Dispatcher& dispatcher,
                          Network::ListenerConfig& config);
-  ActiveInternalListener(Network::ConnectionHandler& conn_handler, Event::Dispatcher& dispatcher,
+  ActiveInternalListener(Network::TcpConnectionHandler& conn_handler, Event::Dispatcher& dispatcher,
                          Network::ListenerPtr listener, Network::ListenerConfig& config);
   ~ActiveInternalListener() override;
 
@@ -55,8 +55,8 @@ public:
   Network::Listener* listener() override { return listener_.get(); }
 
   Network::BalancedConnectionHandlerOptRef
-  getBalancedHandlerByAddress(const Network::Address::Instance&) override {
-    NOT_IMPLEMENTED_GCOVR_EXCL_LINE;
+  getBalancedHandlerByAddress(const Network::Address::Instance& address) override {
+    return tcp_conn_handler_.getBalancedHandlerByAddress(address);
   }
 
   void pauseListening() override {
@@ -85,6 +85,8 @@ public:
    * connections are not impacted.
    */
   void updateListenerConfig(Network::ListenerConfig& config);
+
+  Network::TcpConnectionHandler& tcp_conn_handler_;
 };
 
 } // namespace Server

@@ -59,16 +59,16 @@ static_resources:
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
           stat_prefix: google
-          cluster: service_local
-    - filter_chain_match:
-        destination_port: 9999
-      name: port_9999_filter_chain
-      filters:
-      - name: envoy.tcp_proxy
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
-          stat_prefix: google
-          cluster: service_facebook
+          cluster: service_10002
+  #  - filter_chain_match:
+  #      destination_port: 9999
+  #    name: port_9999_filter_chain
+  #    filters:
+  #    - name: envoy.tcp_proxy
+  #      typed_config:
+  #        "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+  #        stat_prefix: google
+  #        cluster: service_10003
     - name: default_virtual_outbound_filter_chain
       filters:
       - name: envoy.filters.network.http_connection_manager
@@ -132,7 +132,7 @@ static_resources:
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
           stat_prefix: facebook
-          cluster: service_facebook
+          cluster: service_10003
     listenerFiltersTimeout: 100s
     continueOnListenerFiltersTimeout: true
   clusters:
@@ -165,14 +165,14 @@ static_resources:
               socket_address:
                 address: www.google.com
                 port_value: 443
-  - name: service_local
+  - name: service_10002
     connect_timeout: 5s
     type: LOGICAL_DNS
     # Comment out the following line to test on v6 networks
     dns_lookup_family: V4_ONLY
     lb_policy: ROUND_ROBIN
     load_assignment:
-      cluster_name: service_local
+      cluster_name: service_10002
       endpoints:
       - lb_endpoints:
         - endpoint:
@@ -180,21 +180,21 @@ static_resources:
               socket_address:
                 address: 127.0.0.1
                 port_value: 10002
-  - name: service_facebook
+  - name: service_10003
     connect_timeout: 5s
     type: LOGICAL_DNS
     # Comment out the following line to test on v6 networks
     dns_lookup_family: V4_ONLY
     lb_policy: ROUND_ROBIN
     load_assignment:
-      cluster_name: service_facebook
+      cluster_name: service_10003
       endpoints:
       - lb_endpoints:
         - endpoint:
             address:
               socket_address:
-                address: www.facebook.com
-                port_value: 443
+                address: 127.0.0.1
+                port_value: 10003
 layered_runtime:
   layers:
   - name: deprecation

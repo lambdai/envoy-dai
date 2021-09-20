@@ -28,12 +28,15 @@
 #include "source/common/http/headers.h"
 #include "source/common/http/message_impl.h"
 #include "source/common/http/utility.h"
+#include "source/common/network/address_impl.h"
 #include "source/common/network/application_protocol.h"
+#include "source/common/network/proxy_protocol_filter_state.h"
 #include "source/common/network/socket_option_factory.h"
 #include "source/common/network/transport_socket_options_impl.h"
 #include "source/common/network/upstream_server_name.h"
 #include "source/common/network/upstream_socket_options_filter_state.h"
 #include "source/common/network/upstream_subject_alt_names.h"
+#include "source/common/network/utility.h"
 #include "source/common/router/config_impl.h"
 #include "source/common/router/debug_config.h"
 #include "source/common/router/retry_state_impl.h"
@@ -41,10 +44,6 @@
 #include "source/common/runtime/runtime_features.h"
 #include "source/common/stream_info/uint32_accessor_impl.h"
 #include "source/common/tracing/http_tracer_impl.h"
-
-#include "source/common/network/proxy_protocol_filter_state.h"
-#include "source/common/network/address_impl.h"
-#include "source/common/network/utility.h"
 
 namespace Envoy {
 namespace Router {
@@ -563,7 +562,8 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
             StreamInfo::FilterState::StateType::ReadOnly,
             StreamInfo::FilterState::LifeSpan::Request);
       } else {
-        ENVOY_STREAM_LOG(warn, "router failed to get original address from connect request headers: {}",
+        ENVOY_STREAM_LOG(warn,
+                         "router failed to get original address from connect request headers: {}",
                          *callbacks_, headers);
       }
     }

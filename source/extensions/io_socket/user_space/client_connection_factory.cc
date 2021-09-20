@@ -4,8 +4,8 @@
 
 #include "source/common/network/address_impl.h"
 #include "source/common/network/connection_impl.h"
-#include "source/common/network/listen_socket_impl.h"
 #include "source/common/network/internal_socket_option_impl.h"
+#include "source/common/network/listen_socket_impl.h"
 #include "source/extensions/io_socket/user_space/io_handle_impl.h"
 
 namespace Envoy {
@@ -42,15 +42,16 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
                 original_address == nullptr ? "nullptr" : original_address->asStringView(),
                 source_address == nullptr ? "nullptr" : source_address->asStringView());
       auto accepted_socket = std::make_unique<Network::AcceptedSocketImpl>(
-          std::move(io_handle_server), original_address, std::make_shared<Network::Address::EnvoyInternalInstance>("source_internal"));
+          std::move(io_handle_server), original_address,
+          std::make_shared<Network::Address::EnvoyInternalInstance>("source_internal"));
 
       if (options != nullptr) {
         for (const auto& opt : *options) {
           auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
           if (internal_opt != nullptr) {
             internal_opt->reverse().setOption(*accepted_socket,
-                                    envoy::config::core::v3::SocketOption::SocketState::
-                                        SocketOption_SocketState_STATE_BOUND);
+                                              envoy::config::core::v3::SocketOption::SocketState::
+                                                  SocketOption_SocketState_STATE_BOUND);
           }
         }
       }
