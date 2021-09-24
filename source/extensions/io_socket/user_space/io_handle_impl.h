@@ -180,6 +180,9 @@ class IoHandleFactory {
 public:
   static std::pair<IoHandleImplPtr, IoHandleImplPtr> createIoHandlePair() {
     auto p = std::pair<IoHandleImplPtr, IoHandleImplPtr>{new IoHandleImpl(), new IoHandleImpl()};
+    // TODO(lambdai): set per connection buffer size.
+    p.first->setWatermarks(1024 * 1024 * 10);
+    p.second->setWatermarks(1024 * 1024 * 10);
     p.first->setPeerHandle(p.second.get());
     p.second->setPeerHandle(p.first.get());
     return p;
