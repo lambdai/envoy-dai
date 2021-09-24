@@ -41,7 +41,13 @@ void commonHashKey(const TransportSocketOptions& options, std::vector<std::uint8
   // Proxy protocol options should only be included in the hash if the upstream
   // socket intends to use them.
   const auto& proxy_protocol_options = options.proxyProtocolOptions();
-  if (proxy_protocol_options.has_value() && factory.usesProxyProtocolOptions()) {
+  if (proxy_protocol_options.has_value()
+      // TODO(lambdai): FIX internal.
+      // this less make conn reuse hard because conn pool is keyed by PP which is downstream
+      // address.
+      /*&& factory.usesProxyProtocolOptions() */) {
+    FANCY_LOG(warn, "push proxy_protocol option into conn pool hash although use PP is = {}",
+              factory.usesProxyProtocolOptions());
     pushScalarToByteVector(
         StringUtil::CaseInsensitiveHash()(proxy_protocol_options.value().asStringForHash()), key);
   }

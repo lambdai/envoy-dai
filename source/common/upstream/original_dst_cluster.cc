@@ -33,6 +33,10 @@ HostConstSharedPtr OriginalDstCluster::LoadBalancer::chooseHost(LoadBalancerCont
       // if localAddressRestored() returns 'true'.
       if (connection && connection->connectionInfoProvider().localAddressRestored()) {
         dst_host = connection->connectionInfoProvider().localAddress();
+        ENVOY_CONN_LOG(
+            debug, " as downstream connection local address {}, is restored local address {}",
+            *connection, connection->connectionInfoProvider().localAddress()->asStringView(),
+            connection->connectionInfoProvider().localAddressRestored());
       }
     }
 
