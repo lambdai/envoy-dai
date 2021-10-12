@@ -35,7 +35,8 @@ namespace Event {
 /**
  * All dispatcher stats. @see stats_macros.h
  */
-#define ALL_DISPATCHER_STATS(HISTOGRAM)                                                            \
+#define ALL_DISPATCHER_STATS(COUNTER, HISTOGRAM)                                                   \
+  COUNTER(loop_count)                                                                              \
   HISTOGRAM(loop_duration_us, Microseconds)                                                        \
   HISTOGRAM(poll_delay_us, Microseconds)
 
@@ -43,7 +44,7 @@ namespace Event {
  * Struct definition for all dispatcher stats. @see stats_macros.h
  */
 struct DispatcherStats {
-  ALL_DISPATCHER_STATS(GENERATE_HISTOGRAM_STRUCT)
+  ALL_DISPATCHER_STATS(GENERATE_COUNTER_STRUCT, GENERATE_HISTOGRAM_STRUCT)
 };
 
 using DispatcherStatsPtr = std::unique_ptr<DispatcherStats>;

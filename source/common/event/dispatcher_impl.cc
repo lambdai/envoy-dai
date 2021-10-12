@@ -101,7 +101,8 @@ void DispatcherImpl::initializeStats(Stats::Scope& scope,
   post([this, &scope, effective_prefix] {
     stats_prefix_ = effective_prefix + "dispatcher";
     stats_ = std::make_unique<DispatcherStats>(
-        DispatcherStats{ALL_DISPATCHER_STATS(POOL_HISTOGRAM_PREFIX(scope, stats_prefix_ + "."))});
+        DispatcherStats{ALL_DISPATCHER_STATS(POOL_COUNTER_PREFIX(scope, stats_prefix_ + "."),
+                                             POOL_HISTOGRAM_PREFIX(scope, stats_prefix_ + "."))});
     base_scheduler_.initializeStats(stats_.get());
     ENVOY_LOG(debug, "running {} on thread {}", stats_prefix_, run_tid_.debugString());
   });
