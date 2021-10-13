@@ -34,4 +34,9 @@ public:
   virtual MonotonicTime monotonicTime() PURE;
 };
 
+struct SchedulerTime {
+  MonotonicTime timestamp_;
+  uint32_t poll_count_;
+};
+
 } // namespace Envoy

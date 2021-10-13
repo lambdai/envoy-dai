@@ -580,5 +580,18 @@ public:
   DownstreamPeerCertVEndFormatter(const std::string& format);
 };
 
+class StreamInfoTimingExtractor : public StreamInfoFormatter::FieldExtractor {
+public:
+  using TimingFieldExtractor =
+      std::function<absl::Span<const SchedulerTime>(const StreamInfo::StreamInfo& stream_info)>;
+
+  StreamInfoTimingExtractor(TimingFieldExtractor f);
+
+  absl::optional<std::string> extract(const StreamInfo::StreamInfo&) const override;
+  ProtobufWkt::Value extractValue(const StreamInfo::StreamInfo&) const override;
+
+private:
+  TimingFieldExtractor field_extractor_;
+};
 } // namespace Formatter
 } // namespace Envoy

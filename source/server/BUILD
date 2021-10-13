@@ -177,6 +177,7 @@ envoy_cc_library(
         "//envoy/server:listener_manager_interface",
         "//source/common/common:assert_lib",
         "//source/common/common:linked_object",
+        "//source/common/common:time_utility_lib",
         "//source/common/network:connection_lib",
         "//source/common/stats:timespan_lib",
     ],
@@ -231,6 +232,7 @@ envoy_cc_library(
         "//envoy/network:listen_socket_interface",
         "//envoy/network:listener_interface",
         "//source/common/common:linked_object",
+        "//source/common/common:time_utility_lib",
         "//source/common/network:connection_lib",
         "//source/common/stream_info:stream_info_lib",
     ],
@@ -256,6 +258,7 @@ envoy_cc_library(
         "//envoy/network:listener_interface",
         "//envoy/stream_info:stream_info_interface",
         "//source/common/common:linked_object",
+        "//source/common/common:time_utility_lib",
         "//source/common/network:connection_lib",
     ],
 )

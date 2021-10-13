@@ -88,7 +88,7 @@ void LibeventScheduler::onPrepareForStats(evwatch*, const evwatch_prepare_cb_inf
   // `self` is `this`, passed in from evwatch_prepare_new.
   auto self = static_cast<LibeventScheduler*>(arg);
   self->stats_->loop_count_.inc();
-  
+
   // Record poll timeout and prepare time for this iteration of the event loop. The timeout is the
   // expected polling duration, whereas the actual polling duration will be the difference measured
   // between the prepare time and the check time immediately after polling. These are compared in

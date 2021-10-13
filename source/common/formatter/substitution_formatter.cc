@@ -912,6 +912,11 @@ StreamInfoFormatter::StreamInfoFormatter(const std::string& field_name) {
           }
           return absl::nullopt;
         });
+  } else if (field_name == "DOWNSTREAM_SOCKET_TIMING") {
+    field_extractor_ =
+        std::make_unique<StreamInfoTimingExtractor>([](const StreamInfo::StreamInfo& stream_info) {
+          return stream_info.getDownstreamSocketTiming();
+        });
   } else {
     throw EnvoyException(fmt::format("Not supported field in StreamInfo: {}", field_name));
   }
@@ -1378,6 +1383,28 @@ ProtobufWkt::Value SystemTimeFormatter::formatValue(
     absl::string_view local_reply_body) const {
   return ValueUtil::optionalStringValue(
       format(request_headers, response_headers, response_trailers, stream_info, local_reply_body));
+}
+
+StreamInfoTimingExtractor::StreamInfoTimingExtractor(
+    StreamInfoTimingExtractor::TimingFieldExtractor f)
+    : field_extractor_(std::move(f)) {}
+absl::optional<std::string>
+StreamInfoTimingExtractor::extract(const StreamInfo::StreamInfo& stream_info) const {
+  auto timing_span = field_extractor_(stream_info);
+  if (timing_span.empty()) {
+    return absl::nullopt;
+  }
+  std::vector<std::string> strings;
+  strings.reserve(timing_span.size());
+  for (const auto& timing : timing_span) {
+    strings.push_back(
+        absl::StrCat(timing.timestamp_.time_since_epoch().count(), ",", timing.poll_count_));
+  }
+  return absl::StrJoin(strings, ";");
+}
+ProtobufWkt::Value
+StreamInfoTimingExtractor::extractValue(const StreamInfo::StreamInfo& stream_info) const {
+  return ValueUtil::optionalStringValue(extract(stream_info));
 }
 
 } // namespace Formatter

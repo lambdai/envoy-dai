@@ -354,6 +354,12 @@ public:
    */
   virtual void setUpstreamTiming(const UpstreamTiming& upstream_timing) PURE;
 
+  virtual void
+  setDownstreamSocketTiming(absl::InlinedVector<SchedulerTime, 8>&& downstream_socket_timing) PURE;
+
+  virtual absl::InlinedVector<SchedulerTime, 8>& downstreamSocketTiming() PURE;
+  virtual absl::Span<const SchedulerTime> getDownstreamSocketTiming() const PURE;
+
   /**
    * @return the duration between the first byte of the request was sent upstream and the start of
    * the request. There may be a considerable delta between lastDownstreamByteReceived and this

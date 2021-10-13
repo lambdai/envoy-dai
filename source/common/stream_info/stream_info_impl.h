@@ -88,6 +88,18 @@ struct StreamInfoImpl : public StreamInfo {
     upstream_timing_ = upstream_timing;
   }
 
+  void setDownstreamSocketTiming(
+      absl::InlinedVector<SchedulerTime, 8>&& downstream_socket_timing) override {
+    downstream_socket_timing_ = std::move(downstream_socket_timing);
+  }
+  absl::InlinedVector<SchedulerTime, 8>& downstreamSocketTiming() override {
+    return downstream_socket_timing_;
+  }
+  absl::Span<const SchedulerTime> getDownstreamSocketTiming() const override {
+    return absl::Span<const SchedulerTime>(downstream_socket_timing_.begin(),
+                                           downstream_socket_timing_.size());
+  }
+
   absl::optional<std::chrono::nanoseconds> firstUpstreamTxByteSent() const override {
     return duration(upstream_timing_.first_upstream_tx_byte_sent_);
   }
@@ -335,6 +347,7 @@ private:
   const Http::RequestHeaderMap* request_headers_{};
   Http::RequestIdStreamInfoProviderSharedPtr request_id_provider_;
   UpstreamTiming upstream_timing_;
+  absl::InlinedVector<SchedulerTime, 8> downstream_socket_timing_;
   std::string upstream_transport_failure_reason_;
   absl::optional<Upstream::ClusterInfoConstSharedPtr> upstream_cluster_info_;
   std::string filter_chain_name_;

@@ -798,5 +798,4 @@ public:
                  [&remove_set](const T& v) -> bool { return remove_set.count(v) == 0; });
   }
 };
-
 } // namespace Envoy

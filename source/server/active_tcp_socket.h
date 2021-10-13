@@ -13,6 +13,7 @@
 #include "envoy/network/listener.h"
 
 #include "source/common/common/linked_object.h"
+#include "source/common/common/time_utility.h"
 #include "source/server/active_listener_base.h"
 
 namespace Envoy {
@@ -40,12 +41,14 @@ struct ActiveTcpSocket : public Network::ListenerFilterManager,
   class GenericListenerFilter : public Network::ListenerFilter {
   public:
     GenericListenerFilter(const Network::ListenerFilterMatcherSharedPtr& matcher,
-                          Network::ListenerFilterPtr listener_filter)
-        : listener_filter_(std::move(listener_filter)), matcher_(std::move(matcher)) {}
+                          Network::ListenerFilterPtr listener_filter, ActiveTcpSocket& parent)
+        : listener_filter_(std::move(listener_filter)), matcher_(std::move(matcher)),
+          parent_(parent) {}
     Network::FilterStatus onAccept(ListenerFilterCallbacks& cb) override {
       if (isDisabled(cb)) {
         return Network::FilterStatus::Continue;
       }
+      parent_.accept_filter_times_.push_back(TimeUtil::currentSchedulerTime(cb.dispatcher()));
       return listener_filter_->onAccept(cb);
     }
     /**
@@ -63,6 +66,7 @@ struct ActiveTcpSocket : public Network::ListenerFilterManager,
   private:
     const Network::ListenerFilterPtr listener_filter_;
     const Network::ListenerFilterMatcherSharedPtr matcher_;
+    ActiveTcpSocket& parent_;
   };
   using ListenerFilterWrapperPtr = std::unique_ptr<GenericListenerFilter>;
 
@@ -70,7 +74,7 @@ struct ActiveTcpSocket : public Network::ListenerFilterManager,
   void addAcceptFilter(const Network::ListenerFilterMatcherSharedPtr& listener_filter_matcher,
                        Network::ListenerFilterPtr&& filter) override {
     accept_filters_.emplace_back(
-        std::make_unique<GenericListenerFilter>(listener_filter_matcher, std::move(filter)));
+        std::make_unique<GenericListenerFilter>(listener_filter_matcher, std::move(filter), *this));
   }
 
   // Network::ListenerFilterCallbacks
@@ -96,6 +100,7 @@ struct ActiveTcpSocket : public Network::ListenerFilterManager,
   Event::TimerPtr timer_;
   std::unique_ptr<StreamInfo::StreamInfo> stream_info_;
   bool connected_{false};
+  mutable absl::InlinedVector<SchedulerTime, 8> accept_filter_times_;
 };
 
 } // namespace Server

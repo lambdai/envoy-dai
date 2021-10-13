@@ -100,6 +100,7 @@ public:
   void post(std::function<void()> callback) override;
   void deleteInDispatcherThread(DispatcherThreadDeletableConstPtr deletable) override;
   void run(RunType type) override;
+  uint64_t pollCount() override { return stats_ == nullptr ? 0 : stats_->loop_count_.value(); }
   Buffer::WatermarkFactory& getWatermarkFactory() override { return *buffer_factory_; }
   void pushTrackedObject(const ScopeTrackedObject* object) override;
   void popTrackedObject(const ScopeTrackedObject* expected_object) override;

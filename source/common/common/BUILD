@@ -426,6 +426,16 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "time_utility_lib",
+    hdrs = ["time_utility.h"],
+    #srcs = ["time_utility.h"],
+    deps = [
+        "//envoy/common:time_interface",
+        "//envoy/event:dispatcher_interface",
+    ],
+)
+
+envoy_cc_library(
     name = "callback_impl_lib",
     srcs = ["callback_impl.cc"],
     hdrs = ["callback_impl.h"],

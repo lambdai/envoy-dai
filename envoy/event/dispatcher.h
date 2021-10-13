@@ -309,6 +309,8 @@ public:
   };
   virtual void run(RunType type) PURE;
 
+  virtual uint64_t pollCount() PURE;
+
   /**
    * Returns a factory which connections may use for watermark buffer creation.
    * @return the watermark buffer factory for this dispatcher.
