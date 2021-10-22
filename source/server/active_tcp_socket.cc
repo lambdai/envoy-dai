@@ -117,6 +117,8 @@ void ActiveTcpSocket::setDynamicMetadata(const std::string& name,
 void ActiveTcpSocket::newConnection() {
   connected_ = true;
 
+  stream_info_->setDownstreamSocketTiming(std::move(accept_filter_times_));
+
   // Check if the socket may need to be redirected to another listener.
   Network::BalancedConnectionHandlerOptRef new_listener;
 
