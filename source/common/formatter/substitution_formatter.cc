@@ -917,6 +917,11 @@ StreamInfoFormatter::StreamInfoFormatter(const std::string& field_name) {
         std::make_unique<StreamInfoTimingExtractor>([](const StreamInfo::StreamInfo& stream_info) {
           return stream_info.getDownstreamSocketTiming();
         });
+  } else if (field_name == "TRANSPORT_SOCKET_CONNECTED_TIME") {
+    field_extractor_ =
+        std::make_unique<StreamInfoTimingExtractor>([](const StreamInfo::StreamInfo& stream_info) {
+          return stream_info.getTransportSocketTiming();
+        });
   } else {
     throw EnvoyException(fmt::format("Not supported field in StreamInfo: {}", field_name));
   }

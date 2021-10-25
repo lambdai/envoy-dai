@@ -15,6 +15,7 @@
 #include "source/common/common/assert.h"
 #include "source/common/common/dump_state_utils.h"
 #include "source/common/common/empty_string.h"
+#include "source/common/common/time_utility.h"
 #include "source/common/common/enum_to_int.h"
 #include "source/common/common/scope_tracker.h"
 #include "source/common/network/address_impl.h"
@@ -423,6 +424,7 @@ void ConnectionImpl::raiseEvent(ConnectionEvent event) {
   // here. If connection write is not ready, this is harmless. We should only do
   // this if we're still open (the above callbacks may have closed).
   if (event == ConnectionEvent::Connected) {
+    stream_info_.pushTransportSocketTiming(TimeUtil::currentSchedulerTime(dispatcher_));
     flushWriteBuffer();
   }
 }

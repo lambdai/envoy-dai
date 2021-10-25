@@ -95,9 +95,18 @@ struct StreamInfoImpl : public StreamInfo {
   absl::InlinedVector<SchedulerTime, 8>& downstreamSocketTiming() override {
     return downstream_socket_timing_;
   }
+
   absl::Span<const SchedulerTime> getDownstreamSocketTiming() const override {
     return absl::Span<const SchedulerTime>(downstream_socket_timing_.begin(),
                                            downstream_socket_timing_.size());
+  }
+
+  void pushTransportSocketTiming(const SchedulerTime& transport_socket_timing) override {
+    transport_socket_connected_time_ = transport_socket_timing;
+  }
+
+  absl::Span<const SchedulerTime> getTransportSocketTiming() const override {
+    return absl::Span<const SchedulerTime>(&transport_socket_connected_time_, 1);
   }
 
   absl::optional<std::chrono::nanoseconds> firstUpstreamTxByteSent() const override {
@@ -298,6 +307,8 @@ struct StreamInfoImpl : public StreamInfo {
   TimeSource& time_source_;
   const SystemTime start_time_;
   const MonotonicTime start_time_monotonic_;
+
+  SchedulerTime transport_socket_connected_time_;
 
   absl::optional<MonotonicTime> last_downstream_rx_byte_received;
   absl::optional<MonotonicTime> first_downstream_tx_byte_sent_;
