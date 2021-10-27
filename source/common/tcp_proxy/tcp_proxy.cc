@@ -365,8 +365,7 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
   }
 
   if (downstreamConnection()) {
-    if (!read_callbacks_
-             ->connection() // this is downstreamConnection()
+    if (!read_callbacks_->connection()
              .streamInfo()
              .filterState()
              ->hasData<Network::ProxyProtocolFilterState>(
@@ -378,13 +377,6 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
               downstreamConnection()->connectionInfoProvider().localAddress()}),
           StreamInfo::FilterState::StateType::ReadOnly,
           StreamInfo::FilterState::LifeSpan::Connection);
-      ENVOY_CONN_LOG(
-          debug,
-          "tcp proxy set downstream conn proxydata to remote = {}, local = {}, readonly, "
-          "connection lifespan",
-          read_callbacks_->connection(),
-          downstreamConnection()->connectionInfoProvider().remoteAddress()->asStringView(),
-          downstreamConnection()->connectionInfoProvider().localAddress()->asStringView());
     }
     transport_socket_options_ = Network::TransportSocketOptionsUtility::fromFilterState(
         downstreamConnection()->streamInfo().filterState());

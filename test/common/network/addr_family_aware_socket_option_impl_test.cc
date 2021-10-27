@@ -155,10 +155,22 @@ TEST_F(AddrFamilyAwareSocketOptionImplTest, GetSocketOptionCannotDetermineVersio
       envoy::config::core::v3::SocketOption::STATE_PREBIND, ENVOY_MAKE_SOCKET_OPTION_NAME(5, 10),
       ENVOY_MAKE_SOCKET_OPTION_NAME(6, 11), 5};
 
-  IoHandlePtr io_handle = std::make_unique<IoSocketHandleImpl>();
   EXPECT_CALL(socket_, ipVersion).WillOnce(testing::Return(absl::nullopt));
   auto result =
       socket_option.getOptionDetails(socket_, envoy::config::core::v3::SocketOption::STATE_PREBIND);
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(AddrFamilyAwareSocketOptionImplTest, GetSocketOptionCannotDetermineVersion) {
+  SocketImpl socket(Socket::Type::Stream, nullptr,
+                    Network::Utility::parseInternetAddressNoThrow("127.0.0.1", 80));
+
+  AddrFamilyAwareSocketOptionImpl socket_option{
+      envoy::config::core::v3::SocketOption::STATE_PREBIND, ENVOY_MAKE_SOCKET_OPTION_NAME(5, 10),
+      ENVOY_MAKE_SOCKET_OPTION_NAME(6, 11), 5};
+
+  auto result =
+      socket_option.getOptionDetails(socket, envoy::config::core::v3::SocketOption::STATE_PREBIND);
   EXPECT_FALSE(result.has_value());
 }
 
