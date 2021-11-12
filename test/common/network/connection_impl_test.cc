@@ -2972,6 +2972,42 @@ TEST_F(PipeClientConnectionImplTest, SkipSourceAddress) {
   connection->close(ConnectionCloseType::NoFlush);
 }
 
+TEST(ClientConnTest, activatebeforeconnect) {
+  Api::ApiPtr api = Api::createApiForTest();
+  Event::DispatcherPtr dispatcher(api->allocateDispatcher("test_thread"));
+
+  auto client_conn = std::make_unique<Network::ClientConnectionImpl>(
+      *dispatcher, Network::Utility::parseInternetAddress("127.0.0.1", 10000, false), nullptr,
+      Network::Test::createRawBufferSocket(), nullptr);
+
+  NiceMock<MockConnectionCallbacks> callbacks;
+  client_conn->addConnectionCallbacks(callbacks);
+  ENVOY_LOG_MISC(debug, "client socket fd = {}", static_cast<int>(client_conn->ioHandle().fdDoNotUse()));
+  // client_conn->ioHandle().activate(Event::FileReadyType::Write);
+  EXPECT_CALL(callbacks, onEvent(testing::Ne(ConnectionEvent::Connected)));
+  ENVOY_LOG_MISC(debug, "before dispatcher run");
+  dispatcher->run(Event::Dispatcher::RunType::NonBlock);
+  ENVOY_LOG_MISC(debug, "after dispatcher run");
+}
+
+TEST(ClientConnTest, doconnect) {
+  Api::ApiPtr api = Api::createApiForTest();
+  Event::DispatcherPtr dispatcher(api->allocateDispatcher("test_thread"));
+
+  auto client_conn = std::make_unique<Network::ClientConnectionImpl>(
+      *dispatcher, Network::Utility::parseInternetAddress("127.0.0.1", 10000, false), nullptr,
+      Network::Test::createRawBufferSocket(), nullptr);
+
+  MockConnectionCallbacks callbacks;
+  client_conn->addConnectionCallbacks(callbacks);
+
+  client_conn->connect();
+  // client_conn->ioHandle().activate(Event::FileReadyType::Write);
+  EXPECT_CALL(callbacks, onEvent(testing::Ne(ConnectionEvent::Connected)));
+  ENVOY_LOG_MISC(debug, "before dispatcher run");
+  dispatcher->run(Event::Dispatcher::RunType::NonBlock);
+  ENVOY_LOG_MISC(debug, "after dispatcher run");
+}
 } // namespace
 } // namespace Network
 } // namespace Envoy
