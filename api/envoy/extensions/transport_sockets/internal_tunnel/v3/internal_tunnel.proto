@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package envoy.extensions.transport_sockets.internal_tunnel.v3;
+
+import "envoy/config/core/v3/base.proto";
+
+import "udpa/annotations/status.proto";
+import "udpa/annotations/versioning.proto";
+import "validate/validate.proto";
+
+option java_package = "io.envoyproxy.envoy.extensions.transport_sockets.internal_tunnel.v3";
+option java_outer_classname = "InternalTunnelProto";
+option java_multiple_files = true;
+option (udpa.annotations.file_status).package_version_status = ACTIVE;
+
+// [#protodoc-title: InternalTunnel]
+// [#extension: envoy.transport_sockets.internal_tunnel]
+// Configuration for internal_tunnel transport socket. This wraps another transport socket.
+message InternalTunnel {
+    // original_dst_address: required.
+
+  // The underlying transport socket being wrapped.
+  //config.core.v3.TransportSocket transport_socket = 2 [(validate.rules).message = {required: true}];
+}
