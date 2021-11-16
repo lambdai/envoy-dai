@@ -84,6 +84,14 @@ public:
   virtual void flushWriteBuffer() PURE;
 };
 
+class TunnelInfo {
+public:
+  virtual ~TunnelInfo() = default;
+  // TODO New Address
+};
+
+using TunnelInfoSharedPtr = std::shared_ptr<TunnelInfo>;
+
 /**
  * A transport socket that does actual read / write. It can also do some transformations on
  * the data (e.g. TLS).
@@ -156,6 +164,15 @@ public:
    * @return boolean indicating if the transport socket was able to start secure transport.
    */
   virtual bool startSecureTransport() PURE;
+
+  /**
+   * Offers the tunnel info of the target endpoint. This tunnel info may advice a new endpoint
+   * address according to the target address.
+   */
+  virtual TunnelInfoSharedPtr tunnelInfo() const {
+    // This massage compiler in POC. Make it PURE following the conversion.
+    return nullptr;
+  }
 };
 
 using TransportSocketPtr = std::unique_ptr<TransportSocket>;

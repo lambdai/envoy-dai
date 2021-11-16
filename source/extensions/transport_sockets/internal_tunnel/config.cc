@@ -6,16 +6,12 @@
 
 #include "source/common/config/utility.h"
 #include "source/common/protobuf/utility.h"
+#include "source/extensions/transport_sockets/internal_tunnel/tunnel_socket.h"
 
 namespace Envoy {
 namespace Extensions {
 namespace TransportSockets {
 namespace InternalTunnel {
-
-Network::TransportSocketPtr InternalTunnelSocketFactory::createTransportSocket(
-    Network::TransportSocketOptionsConstSharedPtr) const {
-  return nullptr;
-}
 
 Network::TransportSocketFactoryPtr
 UpstreamInternalTunnelSocketConfigFactory::createTransportSocketFactory(
@@ -23,7 +19,7 @@ UpstreamInternalTunnelSocketConfigFactory::createTransportSocketFactory(
     Server::Configuration::TransportSocketFactoryContext& context) {
   UNREFERENCED_PARAMETER(message);
   UNREFERENCED_PARAMETER(context);
-  return std::make_unique<InternalTunnelSocketFactory>();
+  return std::make_unique<UpstreamInternalTunnelSocketFactory>(nullptr, InternalTunnelConfig());
 }
 
 ProtobufTypes::MessagePtr UpstreamInternalTunnelSocketConfigFactory::createEmptyConfigProto() {

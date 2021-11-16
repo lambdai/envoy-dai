@@ -39,7 +39,9 @@ extensions/filters/common/original_src @snowp @klarose
 # header_to_metadata extension
 /*/extensions/filters/http/header_to_metadata @rgs1 @zuercher
 # alts transport socket extension
-/*/extensions/transport_sockets/alts @antoniovicente @asraa @yangminzhu
+/*/extensions/transport_sockets/alts @antoniovicente @asraa @yaqngminzhu
+# internal tunnel transport socket extensions massage formatter
+/*/extensions/transport_sockets/internal_tunnel @lambdai @kyessenov @tbarrella @mattklein123
 # tls transport socket extension
 /*/extensions/transport_sockets/tls @lizan @asraa @ggreenway
 # tls SPIFFE certificate validator extension

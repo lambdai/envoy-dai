@@ -7,21 +7,6 @@ namespace Extensions {
 namespace TransportSockets {
 namespace InternalTunnel {
 
-class InternalTunnelSocketFactory : public Network::TransportSocketFactory {
-public:
-  explicit InternalTunnelSocketFactory() = default;
-
-  // Network::TransportSocketFactory
-  bool implementsSecureTransport() const override { return false; }
-
-  Network::TransportSocketPtr
-  createTransportSocket(Network::TransportSocketOptionsConstSharedPtr options) const override;
-
-  bool usesProxyProtocolOptions() const override { return false; }
-
-  bool supportsAlpn() const override { return false; }
-};
-
 class UpstreamInternalTunnelSocketConfigFactory
     : public Server::Configuration::UpstreamTransportSocketConfigFactory {
 public:

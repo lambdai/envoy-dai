@@ -17,7 +17,7 @@ option (udpa.annotations.file_status).package_version_status = ACTIVE;
 // [#extension: envoy.transport_sockets.internal_tunnel]
 // Configuration for internal_tunnel transport socket. This wraps another transport socket.
 message InternalTunnel {
-    // original_dst_address: required.
+  // original_dst_address: required.
 
   // The underlying transport socket being wrapped.
   //config.core.v3.TransportSocket transport_socket = 2 [(validate.rules).message = {required: true}];
