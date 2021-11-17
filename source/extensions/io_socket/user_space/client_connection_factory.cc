@@ -26,6 +26,12 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
   std::tie(io_handle_client, io_handle_server) =
       Extensions::IoSocket::UserSpace::IoHandleFactory::createIoHandlePair();
 
+  auto on_stream_info = [](StreamInfo::StreamInfo&) {};
+      if (const auto& tunnel_info = transport_socket.tunnelInfo(); tunnel_info != nullptr) {
+        on_stream_info = tunnel_info->onRemoteStreamInfo();
+      }
+
+
   auto client_conn = std::make_unique<Network::ClientConnectionImpl>(
       dispatcher,
       std::make_unique<Network::ConnectionSocketImpl>(std::move(io_handle_client), source_address,
@@ -44,7 +50,9 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
       auto accepted_socket = std::make_unique<Network::AcceptedSocketImpl>(
           std::move(io_handle_server), original_address,
           std::make_shared<Network::Address::EnvoyInternalInstance>("source_internal"));
-
+      
+      on_stream_info(accepted_socket->stream_info_);
+      
       if (options != nullptr) {
         for (const auto& opt : *options) {
           auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
@@ -56,7 +64,7 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
         }
       }
       // TODO: also check if disabled
-      internal_listener.value().get().onAccept(std::move(accepted_socket));
+      internal_listener.value().get().onAccept(std::move(accepted_socket), on_stream_info);
       FANCY_LOG(debug, "lambdai: find internal listener {} ", address->asStringView());
     } else {
       FANCY_LOG(debug, "lambdai: cannot find internal listener {} ", address->asStringView());

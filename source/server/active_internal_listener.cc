@@ -50,20 +50,15 @@ void ActiveInternalListener::updateListenerConfig(Network::ListenerConfig& confi
   config_ = &config;
 }
 
-void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket) {
+void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket, const StreamInfoCallback& stream_info_callback) {
   // Unlike tcp listener, no rebalancer is applied and won't call pickTargetHandler to account
   // connections.
   incNumConnections();
 
   auto active_socket = std::make_unique<ActiveTcpSocket>(
       *this, std::move(socket), config_->handOffRestoredDestinationConnections());
-  // TODO(lambdai): restore address from either socket options, or from listener config.
-  // active_socket->socket_->connectionInfoProvider().restoreLocalAddress(
-  //     std::make_shared<Network::Address::Ipv4Instance>("255.255.255.255", 0));
-  // active_socket->socket_->connectionInfoProvider().setRemoteAddress(
-  //     std::make_shared<Network::Address::Ipv4Instance>("255.255.255.254", 0));
 
-  onSocketAccepted(std::move(active_socket));
+  onSocketAccepted(std::move(active_socket), std::invoke(stream_info_callback, *active_socket->stream_info_));
 }
 
 void ActiveInternalListener::newActiveConnection(

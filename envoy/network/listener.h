@@ -445,11 +445,12 @@ class InternalListenerCallbacks {
 public:
   virtual ~InternalListenerCallbacks() = default;
 
+  using StreamInfoCallback = std::function<void(StreamInfo::StreamInfo& stream_info)>;
   /**
    * Called when a new connection is accepted.
    * @param socket supplies the socket that is moved into the callee.
    */
-  virtual void onAccept(ConnectionSocketPtr&& socket) PURE;
+  virtual void onAccept(ConnectionSocketPtr&& socket, const StreamInfoCallback& stream_info_callback) PURE;
 };
 using InternalListenerCallbacksOptRef =
     absl::optional<std::reference_wrapper<InternalListenerCallbacks>>;

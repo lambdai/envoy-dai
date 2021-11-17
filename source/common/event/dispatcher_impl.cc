@@ -168,6 +168,13 @@ DispatcherImpl::createClientConnection(Network::Address::InstanceConstSharedPtr 
       return "EnvoyInternal";
     }
   };
+  const auto & tunnel_info = transport_socket->tunnelInfo();
+  if (tunnel_info != nullptr) {
+    if (auto new_address = tunnel_info->tunnelAddress(); address != nullptr) {
+      address = std::move(new_address);
+      // TODO(lambdai): create the options here to generate the StreamInfoCallback.
+    }
+  }
   // TODO: register and find by address type instead of name.
   auto factory = Config::Utility::getFactoryByName<Network::ClientConnectionFactory>(
       address_type_name(address));
