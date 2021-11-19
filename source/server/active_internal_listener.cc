@@ -57,8 +57,8 @@ void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket, con
 
   auto active_socket = std::make_unique<ActiveTcpSocket>(
       *this, std::move(socket), config_->handOffRestoredDestinationConnections());
-
-  onSocketAccepted(std::move(active_socket), std::invoke(stream_info_callback, *active_socket->stream_info_));
+  std::invoke(stream_info_callback, *active_socket->stream_info_);
+  onSocketAccepted(std::move(active_socket));
 }
 
 void ActiveInternalListener::newActiveConnection(

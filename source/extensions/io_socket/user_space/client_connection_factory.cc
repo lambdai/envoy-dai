@@ -27,10 +27,9 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
       Extensions::IoSocket::UserSpace::IoHandleFactory::createIoHandlePair();
 
   auto on_stream_info = [](StreamInfo::StreamInfo&) {};
-      if (const auto& tunnel_info = transport_socket.tunnelInfo(); tunnel_info != nullptr) {
-        on_stream_info = tunnel_info->onRemoteStreamInfo();
-      }
-
+  // if (const auto& tunnel_info = transport_socket.tunnelInfo(); tunnel_info != nullptr) {
+  //   on_stream_info = tunnel_info->onRemoteStreamInfo();
+  // }
 
   auto client_conn = std::make_unique<Network::ClientConnectionImpl>(
       dispatcher,
@@ -50,9 +49,7 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
       auto accepted_socket = std::make_unique<Network::AcceptedSocketImpl>(
           std::move(io_handle_server), original_address,
           std::make_shared<Network::Address::EnvoyInternalInstance>("source_internal"));
-      
-      on_stream_info(accepted_socket->stream_info_);
-      
+          
       if (options != nullptr) {
         for (const auto& opt : *options) {
           auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());

@@ -331,7 +331,7 @@ Network::ClientConnectionPtr HostImpl::createConnection(
     const auto& pp = transport_socket_options->proxyProtocolOptions().value();
     connection_options->emplace_back(
         std::make_shared<Network::InternalSocketOptionImpl>(pp.dst_addr_, pp.src_addr_));
-    FANCY_LOG(warn, "create a internal socket opt, dst_addr_={}, src_addr = {}",
+    FANCY_LOG(warn, "create a internal socket opt, dst_addr_ = {}, src_addr = {}",
               pp.dst_addr_ == nullptr ? "nullptr" : pp.dst_addr_->asStringView(),
               pp.src_addr_ == nullptr ? "nullptr" : pp.src_addr_->asStringView());
   }
