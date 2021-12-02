@@ -26,10 +26,26 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
   std::tie(io_handle_client, io_handle_server) =
       Extensions::IoSocket::UserSpace::IoHandleFactory::createIoHandlePair();
 
-  auto on_stream_info = [](StreamInfo::StreamInfo&) {};
+  // TODO(lambdai): on_stream_info from transport_socket
   // if (const auto& tunnel_info = transport_socket.tunnelInfo(); tunnel_info != nullptr) {
   //   on_stream_info = tunnel_info->onRemoteStreamInfo();
   // }
+  auto on_stream_info = [options](StreamInfo::StreamInfo& stream_info) {
+    UNREFERENCED_PARAMETER(stream_info);
+  };
+
+  auto on_socket = [options](Network::ConnectionSocket& server_socket) {
+    if (options != nullptr) {
+      for (const auto& opt : *options) {
+        auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
+        if (internal_opt != nullptr) {
+          internal_opt->reverse().setOption(server_socket,
+                                            envoy::config::core::v3::SocketOption::SocketState::
+                                                SocketOption_SocketState_STATE_BOUND);
+        }
+      }
+    }
+  };
 
   auto client_conn = std::make_unique<Network::ClientConnectionImpl>(
       dispatcher,
@@ -49,19 +65,9 @@ Network::ClientConnectionPtr InternalClientConnectionFactory::createClientConnec
       auto accepted_socket = std::make_unique<Network::AcceptedSocketImpl>(
           std::move(io_handle_server), original_address,
           std::make_shared<Network::Address::EnvoyInternalInstance>("source_internal"));
-          
-      if (options != nullptr) {
-        for (const auto& opt : *options) {
-          auto* internal_opt = dynamic_cast<const Network::InternalSocketOptionImpl*>(opt.get());
-          if (internal_opt != nullptr) {
-            internal_opt->reverse().setOption(*accepted_socket,
-                                              envoy::config::core::v3::SocketOption::SocketState::
-                                                  SocketOption_SocketState_STATE_BOUND);
-          }
-        }
-      }
       // TODO: also check if disabled
-      internal_listener.value().get().onAccept(std::move(accepted_socket), on_stream_info);
+      internal_listener.value().get().onAccept(std::move(accepted_socket), on_stream_info,
+                                               on_socket);
       FANCY_LOG(debug, "lambdai: find internal listener {} ", address->asStringView());
     } else {
       FANCY_LOG(debug, "lambdai: cannot find internal listener {} ", address->asStringView());

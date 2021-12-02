@@ -50,14 +50,17 @@ void ActiveInternalListener::updateListenerConfig(Network::ListenerConfig& confi
   config_ = &config;
 }
 
-void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket, const StreamInfoCallback& stream_info_callback) {
+void ActiveInternalListener::onAccept(Network::ConnectionSocketPtr&& socket,
+                                      const InternalStreamInfoCallback& on_stream_info,
+                                      const InternalSocketCallback& on_socket) {
   // Unlike tcp listener, no rebalancer is applied and won't call pickTargetHandler to account
   // connections.
   incNumConnections();
 
   auto active_socket = std::make_unique<ActiveTcpSocket>(
       *this, std::move(socket), config_->handOffRestoredDestinationConnections());
-  std::invoke(stream_info_callback, *active_socket->stream_info_);
+  std::invoke(on_socket, *active_socket->socket_);
+  std::invoke(on_stream_info, *active_socket->stream_info_);
   onSocketAccepted(std::move(active_socket));
 }
 

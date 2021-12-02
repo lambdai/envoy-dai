@@ -72,7 +72,9 @@ public:
   void shutdownListener() override { listener_.reset(); }
 
   // Network::InternalListenerCallbacks
-  void onAccept(Network::ConnectionSocketPtr&& socket, const StreamInfoCallback& onStreamInfo) override;
+  void onAccept(Network::ConnectionSocketPtr&& socket,
+                const InternalStreamInfoCallback& onStreamInfo,
+                const InternalSocketCallback& onSocket) override;
 
   void incNumConnections() override { config_->openConnections().inc(); }
   void decNumConnections() override { config_->openConnections().dec(); }
