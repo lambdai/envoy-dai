@@ -24,7 +24,7 @@ UpstreamInternalTunnelSocketConfigFactory::createTransportSocketFactory(
 
 ProtobufTypes::MessagePtr UpstreamInternalTunnelSocketConfigFactory::createEmptyConfigProto() {
   return std::make_unique<
-      envoy::extensions::transport_sockets::internal_tunnel::v3::InternalTunnel>();
+      envoy::extensions::transport_sockets::internal_tunnel::v3::InternalTunnelConfig>();
 }
 
 REGISTER_FACTORY(UpstreamInternalTunnelSocketConfigFactory,

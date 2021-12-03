@@ -87,7 +87,11 @@ public:
 class TunnelInfo {
 public:
   virtual ~TunnelInfo() = default;
-  // TODO New Address
+
+  /**
+   * @return const Address::InstanceConstSharedPtr& The address of the tunnel.
+   */
+  virtual const Address::InstanceConstSharedPtr& tunnelAddress() PURE;
 };
 
 using TunnelInfoSharedPtr = std::shared_ptr<TunnelInfo>;

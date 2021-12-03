@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package envoy.extensions.transport_sockets.internal_tunnel.v3;
 
+import "envoy/config/core/v3/address.proto";
 import "envoy/config/core/v3/base.proto";
 
 import "udpa/annotations/status.proto";
@@ -13,11 +14,26 @@ option java_outer_classname = "InternalTunnelProto";
 option java_multiple_files = true;
 option (udpa.annotations.file_status).package_version_status = ACTIVE;
 
-// [#protodoc-title: InternalTunnel]
+// [#protodoc-title: InternalTunnelConfig]
 // [#extension: envoy.transport_sockets.internal_tunnel]
 // Configuration for internal_tunnel transport socket. This wraps another transport socket.
-message InternalTunnel {
-  // original_dst_address: required.
+// The connection via internal tunnel transport socket specifies an internal listener address.
+// Upon the connection is established, the structured connection info can be set from the client connection context.
+// The structured info can be ranges from the original_dst address to a random C++ reference in the stream info.
+message InternalTunnelConfig {
+  // The name of the internal listener. The tunnel will be established to this internal listener.
+  config.core.v3.EnvoyInternalAddress target_internal_listener = 1;
+
+  // An evaluator on the upstream endpoint and downstream info. The evaluated result forms a key to decide the connection pool.
+  // The background is that differnt downstream request may not want to share the same upstream connection even though the same host is selected.
+  // An example config is "[%DOWNSTREAM_REMOTE_ADDRESS%]". It means if the downstream remote clients are ip X and ip Y,
+  // their upstream connection cannot be reused even the same upstream host is chosen.
+  //
+  // The evalutor should support evaluation from downstream info, and upstream endpoint including metadata.
+  repeated string connection_pool_keys = 2;
+
+  // The factory of the server connection info. The context of the mutator is the client connection.
+  repeated string upstream_info_mutator = 3;
 
   // The underlying transport socket being wrapped.
   //config.core.v3.TransportSocket transport_socket = 2 [(validate.rules).message = {required: true}];

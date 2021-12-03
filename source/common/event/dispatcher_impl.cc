@@ -169,11 +169,11 @@ DispatcherImpl::createClientConnection(Network::Address::InstanceConstSharedPtr 
     }
   };
   const auto& tunnel_info = transport_socket->tunnelInfo();
+  // The tunnel address is modified here because the tunnel address impact the connection factory.
   if (tunnel_info != nullptr) {
-    // if (auto new_address = tunnel_info->tunnelAddress(); address != nullptr) {
-    //   address = std::move(new_address);
-    //   // TODO(lambdai): create the options here to generate the InternalStreamInfoCallback.
-    // }
+    if (const auto& tunnel_address = tunnel_info->tunnelAddress(); tunnel_address != nullptr) {
+      address = tunnel_address;
+    }
   }
   // TODO: register and find by address type instead of name.
   auto factory = Config::Utility::getFactoryByName<Network::ClientConnectionFactory>(
