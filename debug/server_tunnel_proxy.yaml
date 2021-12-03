@@ -1,0 +1,146 @@
+# This configuration terminates a CONNECT request and sends the CONNECT payload upstream.
+# It can be used to test TCP tunneling as described in docs/root/intro/arch_overview/http/upgrades.rst
+# or used to test CONNECT directly, by running `curl -k -v -x 127.0.0.1:10001 https://www.google.com`
+admin:
+  address:
+    socket_address:
+      protocol: TCP
+      address: 127.0.0.1
+      port_value: 9902
+static_resources:
+  listeners:
+  - name: decap_listener
+    address:
+      socket_address:
+        protocol: TCP
+        address: 127.0.0.1
+        port_value: 15101
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: ingress_http
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains:
+              - "*"
+              routes:
+              - match:
+                  connect_matcher:
+                    {}
+                route:
+                  cluster: internal_virtual_inbound
+                  upgrade_configs:
+                  - upgrade_type: CONNECT
+                    connect_config:
+                      {}
+          http_filters:
+          - name: envoy.filters.http.router
+          http2_protocol_options:
+            allow_connect: true
+          upgrade_configs:
+          - upgrade_type: CONNECT
+  - name: internal_virtual_inbound
+    address:
+      envoy_internal_address:
+        server_listener_name: internal_virtual_inbound
+    internal_listener: {}
+    bind_to_port: false
+    use_original_dst: true
+    filter_chains:
+    - name: inbound_tcp_pod_9000
+      filter_chain_match:
+        destination_port: 9000
+      filters:
+      - name: envoy.tcp_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+          stat_prefix: tcp_pod_9000
+          cluster: tcp_pod_9000
+          access_log:
+            - name: envoy.access_loggers.file
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+                path: "/dev/stdout"
+                log_format:
+                  text_format_source:
+                    inline_string: "inboundtcppod9000 %DOWNSTREAM_REMOTE_ADDRESS%--%DOWNSTREAM_LOCAL_ADDRESS%\n"
+
+    - name: default_virtual_filter_chain # This should never hit. We create this for debug. A curl client sees denied response.
+      filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: ingress_http
+          use_remote_address: true
+          common_http_protocol_options:
+            idle_timeout: 3600s  # 1 hour
+            headers_with_underscores_action: REJECT_REQUEST
+          http2_protocol_options:
+            max_concurrent_streams: 100
+            initial_stream_window_size: 65536  # 64 KiB
+            initial_connection_window_size: 1048576  # 1 MiB
+          stream_idle_timeout: 300s  # 5 mins, must be disabled for long-lived and streaming requests
+          request_timeout: 300s  # 5 mins, must be disabled for long-lived and streaming requests
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains: ["*"]
+              # The exact route table is not super important in this example (this is the model
+              # for the Google VRP scenario).
+              routes:
+              - match:
+                  prefix: "/"
+                direct_response:
+                  status: 403
+                  body:
+                    inline_string: "denied\n"
+          http_filters:
+          - name: envoy.filters.http.router
+    listenerFiltersTimeout: 100s
+    continueOnListenerFiltersTimeout: true
+
+  clusters:
+  # TODO: verify ORIGINAL_DST cluster work with internal_redirect transport socket type.
+  # Alternatively we can create per inbound port cluster.
+  - name: internal_virtual_inbound # This cluster is referenced by decap listener. It redirect the decap traffic to the singleton virtual inbound listener.
+    connect_timeout: 10s
+    type: ORIGINAL_DST
+    lb_policy: CLUSTER_PROVIDED
+    cleanup_interval: 60s
+    transport_socket:
+      name: envoy.transport_sockets.internal_redirect
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.transport_sockets.internal_tunnel.v3.InternalTunnelConfig
+        target_internal_listener:
+          server_listener_name: internal_virtual_outbound
+  
+  # We create a dedicated cluster for each listening port. Consider transit to ORIGINAL_DST cluster as was istio since ~1.10.
+  - name: tcp_pod_9000  
+    connect_timeout: 5s
+    type: STATIC
+    dns_lookup_family: V4_ONLY
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: internal_virtual_outbound
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 9000
+layered_runtime:
+  layers:
+  - name: deprecation
+    static_layer:
+      envoy.reloadable_features.internal_address: true
+  - name: global config
+    static_layer:
+      overload.global_downstream_max_connections: 2147483647
+  - name: admin
+    admin_layer: {}
