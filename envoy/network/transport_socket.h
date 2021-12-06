@@ -174,7 +174,7 @@ public:
    * address according to the target address.
    */
   virtual TunnelInfoSharedPtr tunnelInfo() const {
-    // This massage compiler in POC. Make it PURE following the conversion.
+    // This massage compiler in ``POC```. Make it PURE following the conversion.
     return nullptr;
   }
 };
@@ -264,6 +264,15 @@ public:
    * @return bool whether the transport socket will use proxy protocol options.
    */
   virtual bool usesProxyProtocolOptions() const PURE;
+
+  /**
+   * @return A vector of bytes that identify the reuse attribute of the connection. The output
+   * matters only if the transport socket and the underlying connection is owned by a connection
+   * pool.
+   */
+  virtual std::vector<uint8_t> generateKeyFromTunnelOptions(const TransportSocketOptions&) const {
+    return {};
+  }
 
   /**
    * Returns true if the transport socket created by this factory supports some form of ALPN

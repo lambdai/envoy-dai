@@ -3,6 +3,9 @@
 #include "envoy/network/proxy_protocol.h"
 #include "envoy/network/transport_socket.h"
 #include "envoy/stream_info/filter_state.h"
+#include "envoy/stream_info/stream_info.h"
+
+#include "source/common/network/tunnel_filter_state.h"
 
 namespace Envoy {
 namespace Network {
@@ -34,6 +37,33 @@ public:
 
 private:
   const std::vector<std::string> alpn_fallback_;
+  const TransportSocketOptionsConstSharedPtr inner_options_;
+};
+
+class TunnelTransportSocketOptions : public TransportSocketOptions {
+public:
+  TunnelTransportSocketOptions(TransportSocketOptionsConstSharedPtr inner_options)
+      : inner_options_(std::move(inner_options)) {}
+  // Network::TransportSocketOptions
+  const absl::optional<std::string>& serverNameOverride() const override {
+    return inner_options_->serverNameOverride();
+  }
+  const std::vector<std::string>& verifySubjectAltNameListOverride() const override {
+    return inner_options_->verifySubjectAltNameListOverride();
+  }
+  const std::vector<std::string>& applicationProtocolListOverride() const override {
+    return inner_options_->applicationProtocolListOverride();
+  }
+  const std::vector<std::string>& applicationProtocolFallback() const override {
+    return inner_options_->applicationProtocolFallback();
+  }
+  absl::optional<Network::ProxyProtocolData> proxyProtocolOptions() const override {
+    return inner_options_->proxyProtocolOptions();
+  }
+  void hashKey(std::vector<uint8_t>& key,
+               const Network::TransportSocketFactory& factory) const override;
+
+private:
   const TransportSocketOptionsConstSharedPtr inner_options_;
 };
 
@@ -88,6 +118,10 @@ public:
    */
   static TransportSocketOptionsConstSharedPtr
   fromFilterState(const StreamInfo::FilterState& stream_info);
+
+  static TransportSocketOptionsConstSharedPtr buildFromTunnelStreamInfoAndExisting(
+      const StreamInfo::StreamInfo& stream_info,
+      TransportSocketOptionsConstSharedPtr& existing_transport_socket_options);
 };
 
 } // namespace Network

@@ -428,11 +428,13 @@ envoy_cc_library(
     deps = [
         ":application_protocol_lib",
         ":proxy_protocol_filter_state_lib",
+        ":tunnel_filter_state_lib",
         ":upstream_server_name_lib",
         ":upstream_subject_alt_names_lib",
         "//envoy/network:proxy_protocol_options_lib",
         "//envoy/network:transport_socket_interface",
         "//envoy/stream_info:filter_state_interface",
+        "//envoy/stream_info:stream_info_interface",
         "//source/common/common:scalar_to_byte_vector_lib",
         "//source/common/common:utility_lib",
     ],
@@ -493,6 +495,16 @@ envoy_cc_library(
     hdrs = ["proxy_protocol_filter_state.h"],
     deps = [
         "//envoy/network:proxy_protocol_options_lib",
+        "//envoy/stream_info:filter_state_interface",
+        "//source/common/common:macros",
+    ],
+)
+
+envoy_cc_library(
+    name = "tunnel_filter_state_lib",
+    srcs = ["tunnel_filter_state.cc"],
+    hdrs = ["tunnel_filter_state.h"],
+    deps = [
         "//envoy/stream_info:filter_state_interface",
         "//source/common/common:macros",
     ],

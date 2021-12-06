@@ -22,7 +22,7 @@ void UpstreamInternalTunnelSocket::setTransportSocketCallbacks(
 
 UpstreamInternalTunnelSocketFactory::UpstreamInternalTunnelSocketFactory(
     Network::TransportSocketFactoryPtr transport_socket_factory, const InternalTunnelConfig& config)
-    : // TODO: add back when when need inner tarnsport socket than raw buffer.
+    : // TODO: add back when when need inner transport socket than raw buffer.
       // transport_socket_factory_(std::move(transport_socket_factory)),
       config_(config) {
   UNREFERENCED_PARAMETER(transport_socket_factory);
@@ -30,6 +30,8 @@ UpstreamInternalTunnelSocketFactory::UpstreamInternalTunnelSocketFactory(
 
 Network::TransportSocketPtr UpstreamInternalTunnelSocketFactory::createTransportSocket(
     Network::TransportSocketOptionsConstSharedPtr options) const {
+  // TODO: impl
+  // Add more upstream stream_info filter stat applier into the UpstreamInternalTunnelSocket.
   return std::make_unique<UpstreamInternalTunnelSocket>(
       std::make_unique<Network::RawBufferSocket>(), options);
 }

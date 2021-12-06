@@ -10,6 +10,7 @@
 #include "source/common/common/utility.h"
 #include "source/common/network/application_protocol.h"
 #include "source/common/network/proxy_protocol_filter_state.h"
+#include "source/common/network/tunnel_filter_state.h"
 #include "source/common/network/upstream_server_name.h"
 #include "source/common/network/upstream_subject_alt_names.h"
 
@@ -45,11 +46,18 @@ void commonHashKey(const TransportSocketOptions& options, std::vector<std::uint8
     pushScalarToByteVector(
         StringUtil::CaseInsensitiveHash()(proxy_protocol_options.value().asStringForHash()), key);
   }
+
+  pushScalarSpanToVector(factory.generateKeyFromTunnelOptions(options), key);
 }
 } // namespace
 
 void AlpnDecoratingTransportSocketOptions::hashKey(
     std::vector<uint8_t>& key, const Network::TransportSocketFactory& factory) const {
+  commonHashKey(*this, key, factory);
+}
+
+void TunnelTransportSocketOptions::hashKey(std::vector<uint8_t>& key,
+                                           const Network::TransportSocketFactory& factory) const {
   commonHashKey(*this, key, factory);
 }
 
@@ -101,6 +109,25 @@ TransportSocketOptionsUtility::fromFilterState(const StreamInfo::FilterState& fi
         std::move(alpn_fallback), proxy_protocol_options);
   } else {
     return nullptr;
+  }
+}
+
+TransportSocketOptionsConstSharedPtr
+TransportSocketOptionsUtility::buildFromTunnelStreamInfoAndExisting(
+    const StreamInfo::StreamInfo& stream_info,
+    TransportSocketOptionsConstSharedPtr& existing_transport_socket_options) {
+  const auto& filter_state = stream_info.filterState();
+
+  //
+  if (filter_state.hasData<TunnelFilterState>(TunnelFilterState::key())) {
+    const auto& tunnel_filter_state =
+        filter_state.getDataReadOnly<TunnelFilterState>(TunnelFilterState::key());
+    // TODO: impl and return arg for TunnelTransportSocketOptions
+    auto func = [](const StreamInfo::StreamInfo&, const TunnelFilterState&) {};
+    func(stream_info, tunnel_filter_state);
+    return std::make_shared<TunnelTransportSocketOptions>(existing_transport_socket_options);
+  } else {
+    return existing_transport_socket_options;
   }
 }
 

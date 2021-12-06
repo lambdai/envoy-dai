@@ -10,7 +10,7 @@ namespace Extensions {
 namespace TransportSockets {
 namespace InternalTunnel {
 
-// TODO: expand while new fields are added to protobuf messsage.
+// TODO: expand while new fields are added to protobuf message.
 class InternalTunnelConfig {};
 class UpstreamInternalTunnelSocketFactory : public Network::TransportSocketFactory {
 public:
@@ -25,6 +25,14 @@ public:
   createTransportSocket(Network::TransportSocketOptionsConstSharedPtr options) const override;
 
   bool usesProxyProtocolOptions() const override { return false; }
+
+  std::vector<uint8_t> generateKeyFromTunnelOptions(const TransportSocketOptions&) const {
+    // TODO: impl
+    // 1. extract the keyed field from config_
+    // 2. read the field from TransportSocketOptions (options must provides a stream info)
+    // 3. transform to bytes and return
+    return {};
+  }
 
   bool supportsAlpn() const override { return false; }
 

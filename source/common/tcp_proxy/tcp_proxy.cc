@@ -381,6 +381,10 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
     transport_socket_options_ = Network::TransportSocketOptionsUtility::fromFilterState(
         downstreamConnection()->streamInfo().filterState());
 
+    transport_socket_options_ =
+        Network::TransportSocketOptionsUtility::buildFromTunnelStreamInfoAndExisting(
+            downstreamConnection()->streamInfo(), transport_socket_options_);
+
     auto has_options_from_downstream =
         downstreamConnection() && downstreamConnection()
                                       ->streamInfo()
