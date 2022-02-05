@@ -94,6 +94,9 @@ void ActiveTcpListener::onReject(RejectCause cause) {
 void ActiveTcpListener::onAcceptWorker(Network::ConnectionSocketPtr&& socket,
                                        bool hand_off_restored_destination_connections,
                                        bool rebalanced) {
+  ENVOY_LOG_MISC(debug, "lambdai: onAcceptWorker at listener {}", config_->name());
+  ENVOY_LOG_MISC(debug, "lambdai: the network listener_ field is {}",
+                 listener_ == nullptr ? "nullptr" : static_cast<const void*>(listener_.get()));
   if (!rebalanced) {
     Network::BalancedConnectionHandler& target_handler =
         config_->connectionBalancer().pickTargetHandler(*this);
@@ -123,6 +126,8 @@ void ActiveTcpListener::resumeListening() {
 
 Network::BalancedConnectionHandlerOptRef
 ActiveTcpListener::getBalancedHandlerByAddress(const Network::Address::Instance& address) {
+  ENVOY_LOG_MISC(debug, "lambdai: getBalancedHandlerByAddress per socket address {}",
+                 address.asStringView());
   return tcp_conn_handler_.getBalancedHandlerByAddress(address);
 }
 

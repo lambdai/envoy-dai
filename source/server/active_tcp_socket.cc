@@ -127,6 +127,8 @@ void ActiveTcpSocket::newConnection() {
         listener_.getBalancedHandlerByAddress(*socket_->connectionInfoProvider().localAddress());
   }
   if (new_listener.has_value()) {
+    ENVOY_LOG_MISC(debug, "lambdai: getBalancedHandlerByAddress find new listener {}", socket_->connectionInfoProvider().localAddress()->asStringView());
+
     // Hands off connections redirected by iptables to the listener associated with the
     // original destination address. Pass 'hand_off_restored_destination_connections' as false to
     // prevent further redirection.
@@ -136,6 +138,7 @@ void ActiveTcpSocket::newConnection() {
     listener_.decNumConnections();
     new_listener.value().get().onAcceptWorker(std::move(socket_), false, false);
   } else {
+    ENVOY_LOG_MISC(debug, "lambdai: getBalancedHandlerByAddress use existing listener {}", listener_.config_->name());
     // Set default transport protocol if none of the listener filters did it.
     if (socket_->detectedTransportProtocol().empty()) {
       socket_->setDetectedTransportProtocol("raw_buffer");

@@ -244,9 +244,13 @@ ConnectionHandlerImpl::getBalancedHandlerByAddress(const Network::Address::Insta
   // If there is exact address match, return the corresponding listener.
   if (auto listener_it = tcp_listener_map_by_address_.find(address.asStringView());
       listener_it != tcp_listener_map_by_address_.end()) {
+    ENVOY_LOG_MISC(debug, "lambdai: getBalancedHandlerByAddress found new listener {}", listener_it->second->tcpListener()->get().config_->name());
+
     return Network::BalancedConnectionHandlerOptRef(
         listener_it->second->tcpListener().value().get());
   }
+
+  ENVOY_LOG_MISC(debug, "lambdai: getBalancedHandlerByAddress finding any new listener for address {}", address.asStringView());
 
   OptRef<ConnectionHandlerImpl::ActiveListenerDetails> details;
   // Otherwise, we need to look for the wild card match, i.e., 0.0.0.0:[address_port].
@@ -261,7 +265,10 @@ ConnectionHandlerImpl::getBalancedHandlerByAddress(const Network::Address::Insta
 
     auto iter = tcp_listener_map_by_address_.find(addr_str);
     if (iter != tcp_listener_map_by_address_.end()) {
+      ENVOY_LOG_MISC(debug, "lambdai: getBalancedHandlerByAddress found any new listener {} for address {}", iter->second->tcpListener()->get().config_->name(), addr_str);
       details = *iter->second;
+    } else {
+      ENVOY_LOG_MISC(debug, "lambdai: getBalancedHandlerByAddress failed to find any new listener address {}", addr_str);
     }
   } else {
     for (auto& iter : tcp_listener_map_by_address_) {

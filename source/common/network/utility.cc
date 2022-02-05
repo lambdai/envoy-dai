@@ -347,11 +347,11 @@ Address::InstanceConstSharedPtr Utility::getIpv6LoopbackAddress() {
 }
 
 Address::InstanceConstSharedPtr Utility::getIpv4AnyAddress(uint32_t port) {
-  CONSTRUCT_ON_FIRST_USE(Address::InstanceConstSharedPtr, new Address::Ipv4Instance(port));
+  return std::make_shared<Address::Ipv4Instance>(port);
 }
 
 Address::InstanceConstSharedPtr Utility::getIpv6AnyAddress(uint32_t port) {
-  CONSTRUCT_ON_FIRST_USE(Address::InstanceConstSharedPtr, new Address::Ipv6Instance(port));
+  return std::make_shared<Address::Ipv6Instance>(port);
 }
 
 const std::string& Utility::getIpv4CidrCatchAllAddress() {
