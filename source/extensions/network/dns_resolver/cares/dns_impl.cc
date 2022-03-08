@@ -202,7 +202,7 @@ void DnsResolverImpl::AddrInfoPendingResolution::onAresGetAddrInfoCallback(
   }
 
   if (timeouts > 0) {
-    ENVOY_LOG(debug, "DNS request timed out {} times", timeouts);
+    ENVOY_LOG(debug, "DNS request for {} timed out {} times", dns_name_, timeouts);
   }
 
   if (completed_) {
