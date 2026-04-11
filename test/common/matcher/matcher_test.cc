@@ -83,7 +83,7 @@ matcher_tree:
               performDataInputValidation(_, "type.googleapis.com/google.protobuf.BoolValue"));
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasStringAction("expected!"));
 }
 
@@ -130,7 +130,7 @@ matcher_tree:
               performDataInputValidation(_, "type.googleapis.com/google.protobuf.BoolValue"));
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasStringAction("expected!"));
 }
 
@@ -465,8 +465,7 @@ matcher_list:
   EXPECT_CALL(validation_visitor_,
               performDataInputValidation(_, "type.googleapis.com/google.protobuf.FloatValue"));
   auto match_tree = factory_.create(matcher);
-  std::string error_message = absl::StrCat("Unsupported data input type: float.",
-                                           " The matcher supports input type: string");
+  std::string error_message = "Unsupported data input type: float";
   EXPECT_THROW_WITH_MESSAGE(match_tree(), EnvoyException, error_message);
 }
 
@@ -510,8 +509,7 @@ TEST_F(MatcherTest, InvalidDataInputInAndMatcher) {
               performDataInputValidation(_, "type.googleapis.com/google.protobuf.FloatValue"))
       .Times(2);
 
-  std::string error_message = absl::StrCat("Unsupported data input type: float.",
-                                           " The matcher supports input type: string");
+  std::string error_message = "Unsupported data input type: float";
   EXPECT_THROW_WITH_MESSAGE(factory_.create(matcher)(), EnvoyException, error_message);
 }
 
@@ -532,7 +530,7 @@ on_no_match:
 
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasStringAction("expected!"));
 }
 
@@ -564,7 +562,7 @@ matcher_list:
   auto common_input_factory = TestCommonProtocolInputFactory("generic", "foo");
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasStringAction("expected!"));
 }
 
@@ -607,7 +605,7 @@ matcher_list:
               performDataInputValidation(_, "type.googleapis.com/google.protobuf.BoolValue"));
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasStringAction("expected!"));
 }
 
@@ -664,7 +662,7 @@ matcher_tree:
       .Times(2);
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasStringAction("expected!"));
 }
 
@@ -721,7 +719,7 @@ matcher_tree:
       .Times(2);
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasStringAction("expected!"));
 }
 
@@ -758,7 +756,7 @@ matcher_list:
               performDataInputValidation(_, "type.googleapis.com/google.protobuf.StringValue"));
   auto match_tree = factory_.create(matcher);
 
-  MatchResult result = evaluateMatch(*match_tree(), TestData());
+  ActionMatchResult result = evaluateMatch(*match_tree(), TestData());
   EXPECT_THAT(result, HasNoMatch());
 }
 
@@ -818,7 +816,7 @@ TEST_F(MatcherTest, RecursiveMatcherNoMatch) {
   matcher.addMatcher(createSingleMatcher(absl::nullopt, [](auto) { return false; }),
                      stringOnMatch<TestData>("match"));
 
-  MatchResult recursive_result = evaluateMatch(matcher, TestData());
+  ActionMatchResult recursive_result = evaluateMatch(matcher, TestData());
   EXPECT_THAT(recursive_result, HasNoMatch());
 }
 
@@ -826,11 +824,10 @@ TEST_F(MatcherTest, RecursiveMatcherCannotMatch) {
   ListMatcher<TestData> matcher(absl::nullopt);
 
   matcher.addMatcher(createSingleMatcher(
-                         absl::nullopt, [](auto) { return false; },
-                         DataInputGetResult::DataAvailability::NotAvailable),
+                         absl::nullopt, [](auto) { return false; }, DataAvailability::NotAvailable),
                      stringOnMatch<TestData>("match"));
 
-  MatchResult recursive_result = evaluateMatch(matcher, TestData());
+  ActionMatchResult recursive_result = evaluateMatch(matcher, TestData());
   EXPECT_THAT(recursive_result, HasInsufficientData());
 }
 
@@ -907,8 +904,8 @@ TEST_P(MatcherAmbiguousTest, KeepMatchingSupportInEvaluation) {
   validation_visitor_.setSupportKeepMatching(true);
   std::shared_ptr<MatchTree<TestData>> matcher = createMatcherFromYaml(yaml)();
 
-  std::vector<ActionFactoryCb> skipped_results;
-  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionFactoryCb cb) {
+  std::vector<ActionConstSharedPtr> skipped_results;
+  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionConstSharedPtr cb) {
     skipped_results.push_back(cb);
   };
   const auto result = evaluateMatch(*matcher, TestData(), skipped_match_cb);
@@ -1020,11 +1017,11 @@ TEST_P(MatcherAmbiguousTest, KeepMatchingWithRecursiveMatcher) {
 
   // Expect the nested matchers with keep_matching to be skipped and also the top-level
   // keep_matching setting to skip the result of the first sub-matcher.
-  std::vector<ActionFactoryCb> skipped_results;
-  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionFactoryCb cb) {
+  std::vector<ActionConstSharedPtr> skipped_results;
+  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionConstSharedPtr cb) {
     skipped_results.push_back(cb);
   };
-  MatchResult result = evaluateMatch(*matcher, TestData(), skipped_match_cb);
+  ActionMatchResult result = evaluateMatch(*matcher, TestData(), skipped_match_cb);
   EXPECT_THAT(result, HasStringAction(("nested-match-2")));
   EXPECT_THAT(skipped_results, ElementsAre(IsStringAction("nested-keep-matching-1"),
                                            IsStringAction("on-no-match-nested-1"),
@@ -1056,11 +1053,11 @@ TEST_P(MatcherAmbiguousTest, KeepMatchingWithUnsupportedReentry) {
   validation_visitor_.setSupportKeepMatching(true);
   std::shared_ptr<MatchTree<TestData>> matcher = createMatcherFromYaml(yaml)();
 
-  std::vector<ActionFactoryCb> skipped_results;
-  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionFactoryCb cb) {
+  std::vector<ActionConstSharedPtr> skipped_results;
+  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionConstSharedPtr cb) {
     skipped_results.push_back(cb);
   };
-  MatchResult result = evaluateMatch(*matcher, TestData(), skipped_match_cb);
+  ActionMatchResult result = evaluateMatch(*matcher, TestData(), skipped_match_cb);
   EXPECT_THAT(result, HasNoMatch());
   EXPECT_THAT(skipped_results, ElementsAre(IsStringAction("keep matching")));
 }
@@ -1126,21 +1123,27 @@ TEST_P(MatcherAmbiguousTest, KeepMatchingWithFailingNestedMatcher) {
   auto nested_matcher = std::make_shared<ListMatcher<TestData>>(absl::nullopt);
   nested_matcher->addMatcher(
       createSingleMatcher(
-          "string", [](auto) { return true; }, DataInputGetResult::DataAvailability::NotAvailable),
+          "string", [](auto) { return true; }, DataAvailability::NotAvailable),
       stringOnMatch<TestData>("fail"));
 
   matcher->addMatcher(createSingleMatcher("string", [](auto) { return true; }),
-                      OnMatch<TestData>{/*.action_cb=*/nullptr, /*.matcher=*/nested_matcher,
+                      OnMatch<TestData>{/*.action_=*/nullptr, /*.matcher=*/nested_matcher,
                                         /*.keep_matching=*/true});
 
   // Expect re-entry to fail due to the nested matcher.
-  std::vector<ActionFactoryCb> skipped_results;
-  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionFactoryCb cb) {
+  std::vector<ActionConstSharedPtr> skipped_results;
+  SkippedMatchCb skipped_match_cb = [&skipped_results](ActionConstSharedPtr cb) {
     skipped_results.push_back(cb);
   };
-  MatchResult result = evaluateMatch(*matcher, TestData(), skipped_match_cb);
+  ActionMatchResult result = evaluateMatch(*matcher, TestData(), skipped_match_cb);
   EXPECT_THAT(result, HasInsufficientData());
   EXPECT_THAT(skipped_results, ElementsAre(IsStringAction("match")));
+}
+
+TEST(MatchResultTest, toString) {
+  EXPECT_EQ(MatchResultToString(Matcher::MatchResult::NoMatch), "no match");
+  EXPECT_EQ(MatchResultToString(Matcher::MatchResult::InsufficientData), "insufficient data");
+  EXPECT_EQ(MatchResultToString(Matcher::MatchResult::Matched), "match");
 }
 
 } // namespace Matcher

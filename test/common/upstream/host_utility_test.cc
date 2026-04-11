@@ -36,8 +36,7 @@ static constexpr HostUtility::HostStatusSet DegradedStatus =
 
 TEST(HostUtilityTest, All) {
   auto cluster = std::make_shared<NiceMock<MockClusterInfo>>();
-  auto time_source = std::make_unique<NiceMock<MockTimeSystem>>();
-  HostSharedPtr host = makeTestHost(cluster, "tcp://127.0.0.1:80", *time_source);
+  HostSharedPtr host = makeTestHost(cluster, "tcp://127.0.0.1:80");
   EXPECT_EQ("healthy", HostUtility::healthFlagsToString(*host));
 
   host->healthFlagSet(Host::HealthFlag::FAILED_ACTIVE_HC);
@@ -61,21 +60,19 @@ TEST(HostUtilityTest, All) {
 #undef SET_HEALTH_FLAG
   EXPECT_EQ("/failed_active_hc/failed_outlier_check/failed_eds_health/degraded_active_hc/"
             "degraded_eds_health/pending_dynamic_removal/pending_active_hc/"
-            "excluded_via_immediate_hc_fail/active_hc_timeout/eds_status_draining",
+            "excluded_via_immediate_hc_fail/active_hc_timeout/eds_status_draining/"
+            "degraded_outlier_detection",
             HostUtility::healthFlagsToString(*host));
 }
 
 TEST(HostLogging, FmtUtils) {
   auto cluster = std::make_shared<NiceMock<MockClusterInfo>>();
-  auto time_source = std::make_unique<NiceMock<MockTimeSystem>>();
-  auto time_ms = std::chrono::milliseconds(5);
-  ON_CALL(*time_source, monotonicTime()).WillByDefault(Return(MonotonicTime(time_ms)));
   EXPECT_LOG_CONTAINS("warn", "Logging host info 127.0.0.1:80 end", {
-    HostSharedPtr host = makeTestHost(cluster, "tcp://127.0.0.1:80", *time_source);
+    HostSharedPtr host = makeTestHost(cluster, "tcp://127.0.0.1:80");
     ENVOY_LOG_MISC(warn, "Logging host info {} end", *host);
   });
   EXPECT_LOG_CONTAINS("warn", "Logging host info hostname end", {
-    HostSharedPtr host = makeTestHost(cluster, "hostname", "tcp://127.0.0.1:80", *time_source);
+    HostSharedPtr host = makeTestHost(cluster, "hostname", "tcp://127.0.0.1:80");
     ENVOY_LOG_MISC(warn, "Logging host info {} end", *host);
   });
 }
@@ -172,7 +169,8 @@ TEST(HostUtilityTest, SelectOverrideHostTest) {
 
   {
     // No expected host.
-    EXPECT_CALL(context, overrideHostToSelect()).WillOnce(Return(absl::nullopt));
+    EXPECT_CALL(context, overrideHostToSelect())
+        .WillOnce(Return(OptRef<const LoadBalancerContext::OverrideHost>()));
     auto host_map = std::make_shared<HostMap>();
     expect_helper(HostUtility::selectOverrideHost(host_map.get(), AllStatuses, &context), nullptr,
                   false);
@@ -184,7 +182,7 @@ TEST(HostUtilityTest, SelectOverrideHostTest) {
       // No host map.
       LoadBalancerContext::OverrideHost override_host{"1.2.3.4", strict_mode};
       EXPECT_CALL(context, overrideHostToSelect())
-          .WillOnce(Return(absl::make_optional(override_host)));
+          .WillOnce(Return(OptRef<const LoadBalancerContext::OverrideHost>(override_host)));
       expect_helper(HostUtility::selectOverrideHost(nullptr, AllStatuses, &context), nullptr,
                     strict_mode);
     }
@@ -193,7 +191,7 @@ TEST(HostUtilityTest, SelectOverrideHostTest) {
       // The host map does not contain the expected host.
       LoadBalancerContext::OverrideHost override_host{"1.2.3.4", strict_mode};
       EXPECT_CALL(context, overrideHostToSelect())
-          .WillOnce(Return(absl::make_optional(override_host)));
+          .WillOnce(Return(OptRef<const LoadBalancerContext::OverrideHost>(override_host)));
       auto host_map = std::make_shared<HostMap>();
       expect_helper(HostUtility::selectOverrideHost(host_map.get(), AllStatuses, &context), nullptr,
                     strict_mode);
@@ -205,7 +203,7 @@ TEST(HostUtilityTest, SelectOverrideHostTest) {
 
       LoadBalancerContext::OverrideHost override_host{"1.2.3.4", strict_mode};
       EXPECT_CALL(context, overrideHostToSelect())
-          .WillRepeatedly(Return(absl::make_optional(override_host)));
+          .WillRepeatedly(Return(OptRef<const LoadBalancerContext::OverrideHost>(override_host)));
 
       auto host_map = std::make_shared<HostMap>();
       host_map->insert({"1.2.3.4", mock_host});
@@ -233,7 +231,7 @@ TEST(HostUtilityTest, SelectOverrideHostTest) {
 
       LoadBalancerContext::OverrideHost override_host{"1.2.3.4", strict_mode};
       EXPECT_CALL(context, overrideHostToSelect())
-          .WillRepeatedly(Return(absl::make_optional(override_host)));
+          .WillRepeatedly(Return(OptRef<const LoadBalancerContext::OverrideHost>(override_host)));
 
       auto host_map = std::make_shared<HostMap>();
       host_map->insert({"1.2.3.4", mock_host});

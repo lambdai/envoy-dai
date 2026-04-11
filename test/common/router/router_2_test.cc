@@ -29,7 +29,14 @@ TEST_F(RouterTestSuppressEnvoyHeaders, Http1Upstream) {
 
   Http::TestRequestHeaderMapImpl headers;
   HttpTestUtility::addDefaultHeaders(headers);
-  EXPECT_CALL(callbacks_.route_->route_entry_, finalizeRequestHeaders(_, _, false));
+
+  EXPECT_CALL(callbacks_.route_->route_entry_, finalizeRequestHeaders(_, _, _, false))
+      .WillOnce(Invoke([this](Http::RequestHeaderMap& headers, const Formatter::Context& context,
+                              const StreamInfo::StreamInfo&, bool) {
+        EXPECT_EQ(context.requestHeaders().ptr(), &headers);
+        EXPECT_EQ(context.activeSpan().ptr(), &callbacks_.active_span_);
+      }));
+
   router_->decodeHeaders(headers, true);
   EXPECT_FALSE(headers.has("x-envoy-expected-rq-timeout-ms"));
 
@@ -38,7 +45,7 @@ TEST_F(RouterTestSuppressEnvoyHeaders, Http1Upstream) {
   router_->onDestroy();
   EXPECT_TRUE(verifyHostUpstreamStats(0, 0));
   EXPECT_EQ(0U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 }
 
 // Validate that we don't set x-envoy-overloaded when Envoy header suppression
@@ -73,7 +80,7 @@ TEST_F(RouterTestSuppressEnvoyHeaders, EnvoyUpstreamServiceTime) {
   HttpTestUtility::addDefaultHeaders(headers);
   router_->decodeHeaders(headers, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   Http::ResponseHeaderMapPtr response_headers(
       new Http::TestResponseHeaderMapImpl{{":status", "200"}});
@@ -112,6 +119,9 @@ public:
   WatermarkTest()
       : RouterTestBase(false, false, false, false, Protobuf::RepeatedPtrField<std::string>{}) {
     EXPECT_CALL(callbacks_, activeSpan()).WillRepeatedly(ReturnRef(span_));
+    // Add default mock for requestBodyBufferLimit which is called during router initialization.
+    EXPECT_CALL(callbacks_.route_->route_entry_, requestBodyBufferLimit())
+        .WillRepeatedly(Return(std::numeric_limits<uint64_t>::max()));
   };
 
   void sendRequest(bool header_only_request = true, bool pool_ready = true) {
@@ -141,7 +151,8 @@ public:
     router_->decodeHeaders(headers_, header_only_request);
     if (pool_ready) {
       EXPECT_EQ(
-          1U, callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+          1U,
+          callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
     }
   }
   void sendResponse() {
@@ -311,7 +322,7 @@ TEST_F(WatermarkTest, DelayUpstreamReadDisableBeforeResponse2) {
 }
 
 TEST_F(WatermarkTest, FilterWatermarks) {
-  EXPECT_CALL(callbacks_, decoderBufferLimit()).Times(AtLeast(3)).WillRepeatedly(Return(10));
+  EXPECT_CALL(callbacks_, bufferLimit()).Times(AtLeast(3)).WillRepeatedly(Return(10));
   router_->setDecoderFilterCallbacks(callbacks_);
   // Send the headers sans-fin, and don't flag the pool as ready.
   sendRequest(false, false);
@@ -349,7 +360,7 @@ TEST_F(WatermarkTest, FilterWatermarks) {
 
 TEST_F(WatermarkTest, FilterWatermarksUnwound) {
   num_add_callbacks_ = 0;
-  EXPECT_CALL(callbacks_, decoderBufferLimit()).Times(AtLeast(3)).WillRepeatedly(Return(10));
+  EXPECT_CALL(callbacks_, bufferLimit()).Times(AtLeast(3)).WillRepeatedly(Return(10));
   router_->setDecoderFilterCallbacks(callbacks_);
   // Send the headers sans-fin, and don't flag the pool as ready.
   sendRequest(false, false);
@@ -372,7 +383,7 @@ TEST_F(WatermarkTest, FilterWatermarksUnwound) {
 // Same as RetryRequestNotComplete but with decodeData larger than the buffer
 // limit, no retry will occur.
 TEST_F(WatermarkTest, RetryRequestNotComplete) {
-  EXPECT_CALL(callbacks_, decoderBufferLimit()).Times(AtLeast(2)).WillRepeatedly(Return(10));
+  EXPECT_CALL(callbacks_, bufferLimit()).Times(AtLeast(2)).WillRepeatedly(Return(10));
   router_->setDecoderFilterCallbacks(callbacks_);
   NiceMock<Http::MockRequestEncoder> encoder1;
   Http::ResponseDecoder* response_decoder = nullptr;
@@ -391,7 +402,7 @@ TEST_F(WatermarkTest, RetryRequestNotComplete) {
   // This will result in retry_state_ being deleted.
   router_->decodeData(data, false);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   // This should not trigger a retry as the retry state has been deleted.
   EXPECT_CALL(cm_.thread_local_cluster_.conn_pool_.host_->outlier_detector_,
@@ -404,9 +415,7 @@ class RouterTestChildSpan : public RouterTestBase {
 public:
   RouterTestChildSpan()
       : RouterTestBase(true, false, false, false, Protobuf::RepeatedPtrField<std::string>{}) {
-    ON_CALL(callbacks_.stream_info_, upstreamClusterInfo())
-        .WillByDefault(Return(absl::make_optional<Upstream::ClusterInfoConstSharedPtr>(
-            cm_.thread_local_cluster_.cluster_.info_)));
+    callbacks_.stream_info_.upstream_cluster_info_ = cm_.thread_local_cluster_.cluster_.info_;
   }
 };
 
@@ -441,7 +450,7 @@ TEST_F(RouterTestChildSpan, BasicFlow) {
   EXPECT_CALL(callbacks_, tracingConfig()).Times(2);
   router_->decodeHeaders(headers, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   Http::ResponseHeaderMapPtr response_headers(
       new Http::TestResponseHeaderMapImpl{{":status", "200"}});
@@ -455,6 +464,7 @@ TEST_F(RouterTestChildSpan, BasicFlow) {
               setTag(Eq(Tracing::Tags::get().UpstreamClusterName), Eq("observability_name")));
   EXPECT_CALL(*child_span, setTag(Eq(Tracing::Tags::get().HttpStatusCode), Eq("200")));
   EXPECT_CALL(*child_span, setTag(Eq(Tracing::Tags::get().ResponseFlags), Eq("-")));
+  EXPECT_CALL(callbacks_.tracing_config_, modifySpan(_, true));
   EXPECT_CALL(*child_span, finishSpan());
   ASSERT(response_decoder);
   response_decoder->decodeHeaders(std::move(response_headers), true);
@@ -492,7 +502,7 @@ TEST_F(RouterTestChildSpan, ResetFlow) {
   EXPECT_CALL(callbacks_, tracingConfig()).Times(2);
   router_->decodeHeaders(headers, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   // Upstream responds back to envoy.
   Http::ResponseHeaderMapPtr response_headers(
@@ -514,6 +524,8 @@ TEST_F(RouterTestChildSpan, ResetFlow) {
   EXPECT_CALL(*child_span, setTag(Eq(Tracing::Tags::get().ResponseFlags), Eq("UR")));
   EXPECT_CALL(*child_span, setTag(Eq(Tracing::Tags::get().Error), Eq(Tracing::Tags::get().True)));
   EXPECT_CALL(*child_span, setTag(Eq(Tracing::Tags::get().ErrorReason), Eq("remote reset")));
+  EXPECT_CALL(callbacks_.tracing_config_, modifySpan(_, true));
+
   EXPECT_CALL(*child_span, finishSpan());
   encoder.stream_.resetStream(Http::StreamResetReason::RemoteReset);
 }
@@ -546,7 +558,7 @@ TEST_F(RouterTestChildSpan, CancelFlow) {
   EXPECT_CALL(callbacks_, tracingConfig()).Times(2);
   router_->decodeHeaders(headers, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   // Destroy the router, causing the upstream request to be cancelled.
   // Response code on span is 0 because the upstream never sent a response.
@@ -563,6 +575,8 @@ TEST_F(RouterTestChildSpan, CancelFlow) {
   EXPECT_CALL(*child_span, setTag(Eq(Tracing::Tags::get().Error), Eq(Tracing::Tags::get().True)));
   EXPECT_CALL(*child_span,
               setTag(Eq(Tracing::Tags::get().Canceled), Eq(Tracing::Tags::get().True)));
+  EXPECT_CALL(callbacks_.tracing_config_, modifySpan(_, true));
+
   EXPECT_CALL(*child_span, finishSpan());
   router_->onDestroy();
 }
@@ -597,7 +611,7 @@ TEST_F(RouterTestChildSpan, ResetRetryFlow) {
   EXPECT_CALL(callbacks_, tracingConfig()).Times(2);
   router_->decodeHeaders(headers, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   // The span should be annotated with the reset-related fields.
   EXPECT_CALL(*child_span_1,
@@ -613,6 +627,8 @@ TEST_F(RouterTestChildSpan, ResetRetryFlow) {
   EXPECT_CALL(*child_span_1, setTag(Eq(Tracing::Tags::get().Error), Eq(Tracing::Tags::get().True)))
       .Times(2);
   EXPECT_CALL(*child_span_1, setTag(Eq(Tracing::Tags::get().ErrorReason), Eq("remote reset")));
+  EXPECT_CALL(callbacks_.tracing_config_, modifySpan(_, true));
+
   EXPECT_CALL(*child_span_1, finishSpan());
 
   router_->retry_state_->expectResetRetry();
@@ -641,7 +657,7 @@ TEST_F(RouterTestChildSpan, ResetRetryFlow) {
 
   router_->retry_state_->callback_();
   EXPECT_EQ(2U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   // Upstream responds back with a normal response. Span should be annotated as usual.
   Http::ResponseHeaderMapPtr response_headers(
@@ -656,6 +672,8 @@ TEST_F(RouterTestChildSpan, ResetRetryFlow) {
               setTag(Eq(Tracing::Tags::get().UpstreamClusterName), Eq("observability_name")));
   EXPECT_CALL(*child_span_2, setTag(Eq(Tracing::Tags::get().HttpStatusCode), Eq("200")));
   EXPECT_CALL(*child_span_2, setTag(Eq(Tracing::Tags::get().ResponseFlags), Eq("-")));
+  EXPECT_CALL(callbacks_.tracing_config_, modifySpan(_, true));
+
   EXPECT_CALL(*child_span_2, finishSpan());
   ASSERT(response_decoder);
   response_decoder->decodeHeaders(std::move(response_headers), true);
@@ -690,7 +708,99 @@ TEST_F(RouterTestNoChildSpan, BasicFlow) {
   EXPECT_CALL(callbacks_.active_span_, injectContext(_, _));
   router_->decodeHeaders(headers, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
+
+  Http::ResponseHeaderMapPtr response_headers(
+      new Http::TestResponseHeaderMapImpl{{":status", "200"}});
+  ASSERT(response_decoder);
+  response_decoder->decodeHeaders(std::move(response_headers), true);
+}
+
+// Test that when noContextPropagation is true, injectContext is not called.
+class RouterTestDisableContextPropagation : public RouterTestBase {
+public:
+  RouterTestDisableContextPropagation()
+      : RouterTestBase(false, false, false, false, Protobuf::RepeatedPtrField<std::string>{}) {
+    // Enable the no_context_propagation flag
+    callbacks_.tracing_config_.no_context_propagation_ = true;
+  }
+};
+
+TEST_F(RouterTestDisableContextPropagation, NoContextInjection) {
+  EXPECT_CALL(callbacks_.route_->route_entry_, timeout())
+      .WillOnce(Return(std::chrono::milliseconds(0)));
+  EXPECT_CALL(callbacks_.dispatcher_, createTimer_(_)).Times(0);
+
+  NiceMock<Http::MockRequestEncoder> encoder;
+  Http::ResponseDecoder* response_decoder = nullptr;
+  EXPECT_CALL(cm_.thread_local_cluster_.conn_pool_, newStream(_, _, _))
+      .WillOnce(
+          Invoke([&](Http::ResponseDecoder& decoder, Http::ConnectionPool::Callbacks& callbacks,
+                     const Http::ConnectionPool::Instance::StreamOptions&)
+                     -> Http::ConnectionPool::Cancellable* {
+            response_decoder = &decoder;
+            callbacks.onPoolReady(encoder, cm_.thread_local_cluster_.conn_pool_.host_,
+                                  upstream_stream_info_, Http::Protocol::Http10);
+            return nullptr;
+          }));
+
+  Http::TestRequestHeaderMapImpl headers;
+  HttpTestUtility::addDefaultHeaders(headers);
+
+  // injectContext should NOT be called when noContextPropagation is true
+  EXPECT_CALL(callbacks_.active_span_, injectContext(_, _)).Times(0);
+
+  router_->decodeHeaders(headers, true);
+  EXPECT_EQ(1U,
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
+
+  Http::ResponseHeaderMapPtr response_headers(
+      new Http::TestResponseHeaderMapImpl{{":status", "200"}});
+  ASSERT(response_decoder);
+  response_decoder->decodeHeaders(std::move(response_headers), true);
+}
+
+// Test with child span and noContextPropagation enabled
+class RouterTestDisableContextPropagationWithChildSpan : public RouterTestBase {
+public:
+  RouterTestDisableContextPropagationWithChildSpan()
+      : RouterTestBase(true, false, false, false, Protobuf::RepeatedPtrField<std::string>{}) {
+    // Enable the no_context_propagation flag
+    callbacks_.tracing_config_.no_context_propagation_ = true;
+  }
+};
+
+TEST_F(RouterTestDisableContextPropagationWithChildSpan, NoContextInjectionWithChildSpan) {
+  EXPECT_CALL(callbacks_.route_->route_entry_, timeout())
+      .WillOnce(Return(std::chrono::milliseconds(0)));
+  EXPECT_CALL(callbacks_.dispatcher_, createTimer_(_)).Times(0);
+
+  NiceMock<Http::MockRequestEncoder> encoder;
+  Http::ResponseDecoder* response_decoder = nullptr;
+  EXPECT_CALL(cm_.thread_local_cluster_.conn_pool_, newStream(_, _, _))
+      .WillOnce(
+          Invoke([&](Http::ResponseDecoder& decoder, Http::ConnectionPool::Callbacks& callbacks,
+                     const Http::ConnectionPool::Instance::StreamOptions&)
+                     -> Http::ConnectionPool::Cancellable* {
+            response_decoder = &decoder;
+            callbacks.onPoolReady(encoder, cm_.thread_local_cluster_.conn_pool_.host_,
+                                  upstream_stream_info_, Http::Protocol::Http10);
+            return nullptr;
+          }));
+
+  Http::TestRequestHeaderMapImpl headers;
+  HttpTestUtility::addDefaultHeaders(headers);
+
+  // Child span is still created but injectContext should NOT be called
+  // Use NiceMock to ignore all other expectations (setTag, finishSpan, etc.)
+  NiceMock<Tracing::MockSpan>* child_span{new NiceMock<Tracing::MockSpan>()};
+  EXPECT_CALL(*child_span, injectContext(_, _)).Times(0);
+  EXPECT_CALL(callbacks_.active_span_, spawnChild_(_, "router observability_name egress", _))
+      .WillOnce(Return(child_span));
+
+  router_->decodeHeaders(headers, true);
+  EXPECT_EQ(1U,
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   Http::ResponseHeaderMapPtr response_headers(
       new Http::TestResponseHeaderMapImpl{{":status", "200"}});
@@ -897,7 +1007,7 @@ TEST_F(RouterTestSupressGRPCStatsEnabled, ExcludeTimeoutHttpStats) {
   Buffer::OwnedImpl data;
   router_->decodeData(data, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   EXPECT_CALL(callbacks_.stream_info_,
               setResponseFlag(StreamInfo::CoreResponseFlag::UpstreamRequestTimeout));
@@ -914,11 +1024,11 @@ TEST_F(RouterTestSupressGRPCStatsEnabled, ExcludeTimeoutHttpStats) {
   EXPECT_EQ(1U,
             cm_.thread_local_cluster_.cluster_.info_->stats_store_.counter("upstream_rq_timeout")
                 .value());
-  EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_timeout_.value());
+  EXPECT_EQ(
+      1U, callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_timeout_.value());
   EXPECT_EQ(1UL, cm_.thread_local_cluster_.conn_pool_.host_->stats().rq_timeout_.value());
-  EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_timeout_.value());
+  EXPECT_EQ(
+      1U, callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_timeout_.value());
   EXPECT_EQ(1U,
             cm_.thread_local_cluster_.cluster_.info_->stats_store_.counter("upstream_rq_completed")
                 .value());
@@ -950,7 +1060,7 @@ TEST_F(RouterTestSupressGRPCStatsDisabled, IncludeHttpTimeoutStats) {
   Buffer::OwnedImpl data;
   router_->decodeData(data, true);
   EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_total_.value());
+            callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_total_.value());
 
   EXPECT_CALL(callbacks_.stream_info_,
               setResponseFlag(StreamInfo::CoreResponseFlag::UpstreamRequestTimeout));
@@ -967,11 +1077,11 @@ TEST_F(RouterTestSupressGRPCStatsDisabled, IncludeHttpTimeoutStats) {
   EXPECT_EQ(1U,
             cm_.thread_local_cluster_.cluster_.info_->stats_store_.counter("upstream_rq_timeout")
                 .value());
-  EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_timeout_.value());
+  EXPECT_EQ(
+      1U, callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_timeout_.value());
   EXPECT_EQ(1UL, cm_.thread_local_cluster_.conn_pool_.host_->stats().rq_timeout_.value());
-  EXPECT_EQ(1U,
-            callbacks_.route_->virtual_host_.virtual_cluster_.stats().upstream_rq_timeout_.value());
+  EXPECT_EQ(
+      1U, callbacks_.route_->virtual_host_->virtual_cluster_.stats().upstream_rq_timeout_.value());
 
   EXPECT_EQ(
       1U,

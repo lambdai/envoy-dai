@@ -38,8 +38,8 @@ public:
 
 // TODO(snowp): Make this a class that tracks the progress to speed up subsequent traversals.
 template <class DataType>
-static inline MatchResult evaluateMatch(MatchTree<DataType>& match_tree, const DataType& data,
-                                        SkippedMatchCb skipped_match_cb = nullptr) {
+static inline ActionMatchResult evaluateMatch(MatchTree<DataType>& match_tree, const DataType& data,
+                                              SkippedMatchCb skipped_match_cb = nullptr) {
   return match_tree.match(data, skipped_match_cb);
 }
 
@@ -55,7 +55,8 @@ public:
   explicit AnyMatcher(absl::optional<OnMatch<DataType>> on_no_match)
       : on_no_match_(std::move(on_no_match)) {}
 
-  MatchResult match(const DataType& data, SkippedMatchCb skipped_match_cb = nullptr) override {
+  ActionMatchResult match(const DataType& data,
+                          SkippedMatchCb skipped_match_cb = nullptr) override {
     return MatchTree<DataType>::handleRecursionAndSkips(on_no_match_, data, skipped_match_cb);
   }
   const absl::optional<OnMatch<DataType>> on_no_match_;
@@ -86,10 +87,7 @@ private:
     explicit CommonProtocolInputWrapper(CommonProtocolInputPtr&& common_protocol_input)
         : common_protocol_input_(std::move(common_protocol_input)) {}
 
-    DataInputGetResult get(const DataType&) const override {
-      return DataInputGetResult{DataInputGetResult::DataAvailability::AllDataAvailable,
-                                common_protocol_input_->get()};
-    }
+    DataInputGetResult get(const DataType&) const override { return common_protocol_input_->get(); }
 
   private:
     const CommonProtocolInputPtr common_protocol_input_;
@@ -324,10 +322,12 @@ private:
           on_match.action().typed_config(), server_factory_context_.messageValidationVisitor(),
           factory);
 
-      auto action_factory = factory.createActionFactoryCb(
-          *message, action_factory_context_, server_factory_context_.messageValidationVisitor());
-      return [action_factory, keep_matching = on_match.keep_matching()] {
-        return OnMatch<DataType>{action_factory, {}, keep_matching};
+      // TODO(taoxuy): try to pass message by moving and let the created action take ownership
+      // of the message if needed, which avoid copy.
+      auto action = factory.createAction(*message, action_factory_context_,
+                                         server_factory_context_.messageValidationVisitor());
+      return [action, keep_matching = on_match.keep_matching()] {
+        return OnMatch<DataType>{action, {}, keep_matching};
       };
     }
 

@@ -183,6 +183,14 @@ TEST(Context, RequestAttributes) {
   }
 
   {
+    auto value = request[CelValue::CreateStringView(HeadersBytes)];
+    EXPECT_TRUE(value.has_value());
+    ASSERT_TRUE(value.value().IsInt64());
+    // this equals to total_size-size
+    EXPECT_EQ(160, value.value().Int64OrDie());
+  }
+
+  {
     auto value = request[CelValue::CreateStringView(Headers)];
     EXPECT_TRUE(value.has_value());
     ASSERT_TRUE(value.value().IsMap());
@@ -386,6 +394,14 @@ TEST(Context, ResponseAttributes) {
   }
 
   {
+    auto value = response[CelValue::CreateStringView(HeadersBytes)];
+    EXPECT_TRUE(value.has_value());
+    ASSERT_TRUE(value.value().IsInt64());
+    // this equals to total_size-size
+    EXPECT_EQ(12, value.value().Int64OrDie());
+  }
+
+  {
     auto value = response[CelValue::CreateStringView(Headers)];
     EXPECT_TRUE(value.has_value());
     ASSERT_TRUE(value.value().IsMap());
@@ -522,6 +538,9 @@ TEST(Context, ConnectionFallbackAttributes) {
 
 TEST(Context, ConnectionAttributes) {
   NiceMock<StreamInfo::MockStreamInfo> info;
+  std::shared_ptr<NiceMock<Upstream::MockClusterInfo>> cluster_info(
+      new NiceMock<Upstream::MockClusterInfo>());
+  info.upstream_cluster_info_ = cluster_info;
   std::shared_ptr<NiceMock<Envoy::Upstream::MockHostDescription>> upstream_host(
       new NiceMock<Envoy::Upstream::MockHostDescription>());
   auto downstream_ssl_info = std::make_shared<NiceMock<Ssl::MockConnectionInfo>>();
@@ -837,11 +856,33 @@ TEST(Context, ConnectionAttributes) {
     EXPECT_TRUE(Protobuf::util::MessageDifferencer::Equals(*value.value().MessageOrDie(),
                                                            upstream_locality));
   }
+
+  {
+    cluster_info->endpoint_stats_.membership_total_.set(1);
+    auto value = upstream[CelValue::CreateStringView(UpstreamNumEndpoints)];
+    EXPECT_TRUE(value.has_value());
+    ASSERT_TRUE(value.value().IsUint64());
+    EXPECT_EQ(1, value.value().Uint64OrDie());
+  }
+
+  {
+    cluster_info->endpoint_stats_.membership_total_.set(0);
+    auto value = upstream[CelValue::CreateStringView(UpstreamNumEndpoints)];
+    EXPECT_TRUE(value.has_value());
+    ASSERT_TRUE(value.value().IsUint64());
+    EXPECT_EQ(0, value.value().Uint64OrDie());
+  }
+
+  {
+    info.upstream_cluster_info_ = nullptr;
+    auto value = upstream[CelValue::CreateStringView(UpstreamNumEndpoints)];
+    EXPECT_FALSE(value.has_value());
+  }
 }
 
 TEST(Context, FilterStateAttributes) {
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::FilterChain);
-  ProtobufWkt::Arena arena;
+  Protobuf::Arena arena;
   FilterStateWrapper wrapper(arena, filter_state);
   auto status_or = wrapper.ListKeys(&arena);
   EXPECT_EQ(status_or.status().message(), "ListKeys() is not implemented");
@@ -874,7 +915,7 @@ TEST(Context, FilterStateAttributes) {
                               "type.googleapis.com/google.protobuf.DoubleValue",
                               StreamInfo::FilterState::LifeSpan::FilterChain);
   auto cel_state = std::make_shared<CelState>(prototype);
-  ProtobufWkt::DoubleValue v;
+  Protobuf::DoubleValue v;
   v.set_value(1.0);
   cel_state->setValue(v.SerializeAsString());
   EXPECT_TRUE(cel_state->serializeAsString().has_value());
@@ -922,7 +963,7 @@ TEST(Context, XDSAttributes) {
   NiceMock<StreamInfo::MockStreamInfo> info;
   std::shared_ptr<NiceMock<Upstream::MockClusterInfo>> cluster_info(
       new NiceMock<Upstream::MockClusterInfo>());
-  EXPECT_CALL(info, upstreamClusterInfo()).WillRepeatedly(Return(cluster_info));
+  info.upstream_cluster_info_ = cluster_info;
   std::shared_ptr<NiceMock<Envoy::Upstream::MockHostDescription>> upstream_host(
       new NiceMock<Envoy::Upstream::MockHostDescription>());
   auto host_metadata = std::make_shared<const envoy::config::core::v3::Metadata>();
@@ -931,7 +972,9 @@ TEST(Context, XDSAttributes) {
   EXPECT_CALL(*upstream_host, localityMetadata()).WillRepeatedly(Return(locality_metadata));
   info.upstreamInfo()->setUpstreamHost(upstream_host);
   std::shared_ptr<NiceMock<Router::MockRoute>> route{new NiceMock<Router::MockRoute>()};
-  EXPECT_CALL(info, route()).WillRepeatedly(Return(route));
+  info.route_ = route;
+  info.virtual_host_ = route->virtual_host_;
+
   const std::string chain_name = "fake_filter_chain_name";
 
   auto filter_chain_info = std::make_shared<NiceMock<Network::MockFilterChainInfo>>();
@@ -982,7 +1025,7 @@ TEST(Context, XDSAttributes) {
     const auto value = wrapper[CelValue::CreateStringView(VirtualHostMetadata)];
     EXPECT_TRUE(value.has_value());
     ASSERT_TRUE(value.value().IsMessage());
-    EXPECT_EQ(&route->virtual_host_.metadata_, value.value().MessageOrDie());
+    EXPECT_EQ(&route->virtual_host_->metadata_, value.value().MessageOrDie());
   }
   {
     const auto value = wrapper[CelValue::CreateStringView(UpstreamHostMetadata)];
@@ -1034,9 +1077,9 @@ TEST(Context, XDSAttributesEdgeCases) {
   NiceMock<StreamInfo::MockStreamInfo> info;
   std::shared_ptr<NiceMock<Upstream::MockClusterInfo>> cluster_info(
       new NiceMock<Upstream::MockClusterInfo>());
-  EXPECT_CALL(info, upstreamClusterInfo()).WillRepeatedly(Return(nullptr));
+  // cluster_info is declared but not set - upstreamClusterInfo() returns empty OptRef by default
   std::shared_ptr<NiceMock<Router::MockRoute>> route{new NiceMock<Router::MockRoute>()};
-  EXPECT_CALL(info, route()).WillRepeatedly(Return(route));
+  info.route_ = route;
   info.downstream_connection_info_provider_->setListenerInfo(nullptr);
 
   Protobuf::Arena arena;

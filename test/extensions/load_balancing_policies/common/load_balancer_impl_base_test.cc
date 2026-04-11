@@ -40,7 +40,7 @@ public:
     host_set.degraded_hosts_.clear();
     host_set.excluded_hosts_.clear();
     for (uint32_t i = 0; i < num_hosts; ++i) {
-      host_set.hosts_.push_back(makeTestHost(info_, "tcp://127.0.0.1:80", simTime()));
+      host_set.hosts_.push_back(makeTestHost(info_, "tcp://127.0.0.1:80"));
     }
     uint32_t i = 0;
     for (; i < num_healthy_hosts; ++i) {
@@ -600,6 +600,55 @@ TEST_F(ZoneAwareLoadBalancerBaseTest, BaseMethods) {
   std::vector<uint8_t> hash_key;
   auto mock_host = std::make_shared<NiceMock<MockHost>>();
   EXPECT_FALSE(lb_.selectExistingConnection(nullptr, *mock_host, hash_key).has_value());
+}
+
+TEST(LoadBalancerBaseCoalesceDisabledTest, FallbackPathExercised) {
+  TestScopedRuntime scoped_runtime;
+  scoped_runtime.mergeValues(
+      {{"envoy.reloadable_features.coalesce_lb_rebuilds_on_batch_update", "false"}});
+
+  Stats::IsolatedStoreImpl stats_store;
+  ClusterLbStatNames stat_names(stats_store.symbolTable());
+  ClusterLbStats stats(stat_names, *stats_store.rootScope());
+  NiceMock<Runtime::MockLoader> runtime;
+  NiceMock<Random::MockRandomGenerator> random;
+  NiceMock<MockPrioritySet> priority_set;
+  auto info = std::make_shared<NiceMock<MockClusterInfo>>();
+
+  envoy::config::cluster::v3::Cluster::CommonLbConfig common_config;
+  TestLb lb(priority_set, stats, runtime, random, common_config);
+
+  MockHostSet& host_set = *priority_set.getMockHostSet(0);
+  host_set.hosts_ = {makeTestHost(info, "tcp://127.0.0.1:80")};
+  host_set.healthy_hosts_ = host_set.hosts_;
+  host_set.runCallbacks({}, {});
+
+  EXPECT_EQ(100, lb.percentageLoad(0));
+}
+
+TEST(ZoneAwareLbCoalesceDisabledTest, FallbackPathExercised) {
+  TestScopedRuntime scoped_runtime;
+  scoped_runtime.mergeValues(
+      {{"envoy.reloadable_features.coalesce_lb_rebuilds_on_batch_update", "false"}});
+
+  Stats::IsolatedStoreImpl stats_store;
+  ClusterLbStatNames stat_names(stats_store.symbolTable());
+  ClusterLbStats stats(stat_names, *stats_store.rootScope());
+  NiceMock<Runtime::MockLoader> runtime;
+  NiceMock<Random::MockRandomGenerator> random;
+  NiceMock<MockPrioritySet> priority_set;
+  auto info = std::make_shared<NiceMock<MockClusterInfo>>();
+
+  ZoneAwareLoadBalancerBase::LocalityLbConfig locality_config;
+  locality_config.mutable_locality_weighted_lb_config();
+  TestZoneAwareLb lb(priority_set, stats, runtime, random, 50, locality_config);
+
+  MockHostSet& host_set = *priority_set.getMockHostSet(0);
+  host_set.hosts_ = {makeTestHost(info, "tcp://127.0.0.1:80")};
+  host_set.healthy_hosts_ = host_set.hosts_;
+  host_set.runCallbacks({}, {});
+
+  EXPECT_FALSE(lb.lifetimeCallbacks().has_value());
 }
 
 } // namespace

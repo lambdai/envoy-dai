@@ -113,6 +113,13 @@ const RequestLookupValues& RequestLookupValues::get() {
            [](const RequestWrapper& wrapper) -> absl::optional<CelValue> {
              return CelValue::CreateMap(&wrapper.headers_);
            }},
+          {HeadersBytes,
+           [](const RequestWrapper& wrapper) -> absl::optional<CelValue> {
+             if (wrapper.headers_.value_ != nullptr) {
+               return CelValue::CreateInt64(wrapper.headers_.value_->byteSize());
+             }
+             return CelValue::CreateInt64(0);
+           }},
           {Time,
            [](const RequestWrapper& wrapper) -> absl::optional<CelValue> {
              return CelValue::CreateTimestamp(absl::FromChrono(wrapper.info_.startTime()));
@@ -235,6 +242,13 @@ const ResponseLookupValues& ResponseLookupValues::get() {
           {Headers,
            [](const ResponseWrapper& wrapper) -> absl::optional<CelValue> {
              return CelValue::CreateMap(&wrapper.headers_);
+           }},
+          {HeadersBytes,
+           [](const ResponseWrapper& wrapper) -> absl::optional<CelValue> {
+             if (wrapper.headers_.value_ != nullptr) {
+               return CelValue::CreateInt64(wrapper.headers_.value_->byteSize());
+             }
+             return CelValue::CreateInt64(0);
            }},
           {Trailers,
            [](const ResponseWrapper& wrapper) -> absl::optional<CelValue> {
@@ -400,6 +414,13 @@ const UpstreamLookupValues& UpstreamLookupValues::get() {
           {UpstreamRequestAttemptCount,
            [](const UpstreamWrapper& wrapper) -> absl::optional<CelValue> {
              return CelValue::CreateUint64(wrapper.info_.attemptCount().value_or(0));
+           }},
+          {UpstreamNumEndpoints, [](const UpstreamWrapper& wrapper) -> absl::optional<CelValue> {
+             if (const auto cluster_info = wrapper.info_.upstreamClusterInfo()) {
+               return CelValue::CreateUint64(
+                   cluster_info->endpointStats().membership_total_.value());
+             }
+             return {};
            }}});
 }
 
@@ -421,8 +442,8 @@ const XDSLookupValues& XDSLookupValues::get() {
                return {};
              }
              const auto cluster_info = wrapper.info_->upstreamClusterInfo();
-             if (cluster_info && cluster_info.value()) {
-               return CelValue::CreateString(&cluster_info.value()->name());
+             if (cluster_info) {
+               return CelValue::CreateString(&cluster_info->name());
              }
              return {};
            }},
@@ -432,9 +453,8 @@ const XDSLookupValues& XDSLookupValues::get() {
                return {};
              }
              const auto cluster_info = wrapper.info_->upstreamClusterInfo();
-             if (cluster_info && cluster_info.value()) {
-               return CelProtoWrapper::CreateMessage(&cluster_info.value()->metadata(),
-                                                     &wrapper.arena_);
+             if (cluster_info) {
+               return CelProtoWrapper::CreateMessage(&cluster_info->metadata(), &wrapper.arena_);
              }
              return {};
            }},
@@ -455,18 +475,25 @@ const XDSLookupValues& XDSLookupValues::get() {
            }},
           {VirtualHostName,
            [](const XDSWrapper& wrapper) -> absl::optional<CelValue> {
-             if (wrapper.info_ == nullptr || !wrapper.info_->route()) {
+             if (wrapper.info_ == nullptr) {
                return {};
              }
-             return CelValue::CreateString(&wrapper.info_->route()->virtualHost().name());
+             const auto vhost = wrapper.info_->virtualHost();
+             if (!vhost) {
+               return {};
+             }
+             return CelValue::CreateString(&vhost->name());
            }},
           {VirtualHostMetadata,
            [](const XDSWrapper& wrapper) -> absl::optional<CelValue> {
-             if (wrapper.info_ == nullptr || !wrapper.info_->route()) {
+             if (wrapper.info_ == nullptr) {
                return {};
              }
-             return CelProtoWrapper::CreateMessage(
-                 &wrapper.info_->route()->virtualHost().metadata(), &wrapper.arena_);
+             const auto vhost = wrapper.info_->virtualHost();
+             if (!vhost) {
+               return {};
+             }
+             return CelProtoWrapper::CreateMessage(&vhost->metadata(), &wrapper.arena_);
            }},
           {UpstreamHostMetadata,
            [](const XDSWrapper& wrapper) -> absl::optional<CelValue> {
@@ -675,11 +702,11 @@ absl::optional<CelValue> FilterStateWrapper::operator[](CelValue key) const {
       // field support, but callers only want to access the whole object.
       if (object->hasFieldSupport()) {
         return CelValue::CreateMap(
-            ProtobufWkt::Arena::Create<FilterStateObjectWrapper>(&arena_, object));
+            Protobuf::Arena::Create<FilterStateObjectWrapper>(&arena_, object));
       }
       absl::optional<std::string> serialized = object->serializeAsString();
       if (serialized.has_value()) {
-        std::string* out = ProtobufWkt::Arena::Create<std::string>(&arena_, serialized.value());
+        std::string* out = Protobuf::Arena::Create<std::string>(&arena_, serialized.value());
         return CelValue::CreateBytes(out);
       }
     }

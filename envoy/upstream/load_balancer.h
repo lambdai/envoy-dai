@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "envoy/common/optref.h"
 #include "envoy/common/pure.h"
 #include "envoy/config/cluster/v3/cluster.pb.h"
 #include "envoy/network/transport_socket.h"
@@ -62,7 +63,7 @@ struct HostSelectionResponse {
   HostSelectionResponse(HostConstSharedPtr host, std::string details)
       : host(host), details(details) {}
   HostConstSharedPtr host;
-  // Optional details if host selection fails.
+  // Optional details if host selection fails (empty string implies no details).
   std::string details;
   std::unique_ptr<AsyncHostSelectionHandle> cancelable;
 };
@@ -146,20 +147,22 @@ public:
   virtual Network::TransportSocketOptionsConstSharedPtr upstreamTransportSocketOptions() const PURE;
 
   /**
-   * Upstream override host. The first element is the target host address and the second element is
-   * a boolean indicating whether the host should be selected strictly or not.
-   * If the host should be selected strictly and no valid host is found, the load balancer should
-   * return  nullptr.
-   * If the host should not be selected strictly, the load balancer will select another host is the
-   * target host is not valid.
+   * Upstream override host structure.
    */
-  using OverrideHost = std::pair<absl::string_view, bool>;
+  struct OverrideHost {
+    // The target host address to select.
+    std::string host;
+    // Whether the host should be selected strictly or not.
+    // If strict and no valid host is found, the load balancer should return nullptr.
+    // If not strict, the load balancer will select another host if the target host is not valid.
+    bool strict{false};
+  };
   /**
    * Returns the host the load balancer should select directly. If the expected host exists and
    * the host can be selected directly, the load balancer can bypass the load balancing algorithm
    * and return the corresponding host directly.
    */
-  virtual absl::optional<OverrideHost> overrideHostToSelect() const PURE;
+  virtual OptRef<const OverrideHost> overrideHostToSelect() const PURE;
 
   /* Called by the load balancer when asynchronous host selection completes
    * @param host supplies the upstream host selected
@@ -333,6 +336,14 @@ using ThreadAwareLoadBalancerPtr = std::unique_ptr<ThreadAwareLoadBalancer>;
 class LoadBalancerConfig {
 public:
   virtual ~LoadBalancerConfig() = default;
+
+  /**
+   * Optional method to allow a load balancer to validate endpoints before they're applied. If an
+   * error is returned from this method, the endpoints are rejected. If this method does not return
+   * an error, the load balancer must be able to use these endpoints in an update from the priority
+   * set.
+   */
+  virtual absl::Status validateEndpoints(const PriorityState&) const { return absl::OkStatus(); }
 };
 using LoadBalancerConfigPtr = std::unique_ptr<LoadBalancerConfig>;
 

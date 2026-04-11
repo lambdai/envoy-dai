@@ -60,8 +60,8 @@ ValidationInstance::ValidationInstance(
       api_(new Api::ValidationImpl(thread_factory, store, time_system, file_system,
                                    random_generator_, bootstrap_, process_context)),
       dispatcher_(api_->allocateDispatcher("main_thread")),
-      access_log_manager_(options.fileFlushIntervalMsec(), *api_, *dispatcher_, access_log_lock,
-                          store),
+      access_log_manager_(options.fileFlushIntervalMsec(), options.fileFlushMinSizeKB(), *api_,
+                          *dispatcher_, access_log_lock, store),
       grpc_context_(stats_store_.symbolTable()), http_context_(stats_store_.symbolTable()),
       router_context_(stats_store_.symbolTable()), time_system_(time_system),
       server_contexts_(*this), quic_stat_names_(stats_store_.symbolTable()) {
@@ -136,9 +136,11 @@ void ValidationInstance::initialize(const Options& options,
   AdminFactoryContext factory_context(*this, std::make_shared<ListenerInfoImpl>());
   initial_config.initAdminAccessLog(bootstrap_, factory_context);
   admin_ = std::make_unique<Server::ValidationAdmin>(initial_config.admin().address());
-  listener_manager_ = Config::Utility::getAndCheckFactoryByName<ListenerManagerFactory>(
-                          Config::ServerExtensionValues::get().VALIDATION_LISTENER)
-                          .createListenerManager(*this, nullptr, *this, false, quic_stat_names_);
+  auto& validation_factory = Config::Utility::getAndCheckFactoryByName<ListenerManagerFactory>(
+      Config::ServerExtensionValues::get().VALIDATION_LISTENER);
+  auto empty_config = validation_factory.createEmptyConfigProto();
+  listener_manager_ = validation_factory.createListenerManager(*empty_config, *this, nullptr, *this,
+                                                               false, quic_stat_names_);
   thread_local_.registerThread(*dispatcher_, true);
 
   runtime_ = component_factory.createRuntime(*this, initial_config);
@@ -161,9 +163,8 @@ void ValidationInstance::initialize(const Options& options,
                                                           *local_info_, validation_context_, *this);
 
   cluster_manager_factory_ = std::make_unique<Upstream::ValidationClusterManagerFactory>(
-      server_contexts_, stats(), threadLocal(), http_context_,
-      [this]() -> Network::DnsResolverSharedPtr { return this->dnsResolver(); },
-      sslContextManager(), quic_stat_names_, *this);
+      server_contexts_, [this]() -> Network::DnsResolverSharedPtr { return this->dnsResolver(); },
+      quic_stat_names_);
   THROW_IF_NOT_OK(config_.initialize(bootstrap_, *this, *cluster_manager_factory_));
   THROW_IF_NOT_OK(runtime().initialize(clusterManager()));
   clusterManager().setInitializedCb([this]() -> void { init_manager_.initialize(init_watcher_); });
