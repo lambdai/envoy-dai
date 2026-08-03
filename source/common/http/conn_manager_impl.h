@@ -97,6 +97,7 @@ public:
 
   // Http::ConnectionCallbacks
   void onGoAway(GoAwayErrorCode error_code) override;
+  void onHttp2ConnectionTxWindowFull(bool full) override;
 
   // Http::ServerConnectionCallbacks
   RequestDecoder& newStream(ResponseEncoder& response_encoder,
@@ -680,6 +681,7 @@ private:
   TimeSource& time_source_;
   bool go_away_sent_{false};
   bool remote_close_{};
+  bool downstream_cx_http2_tx_window_full_{};
   // Hop by hop headers should always be cleared for Envoy-as-a-proxy but will
   // not be for Envoy-mobile.
   bool clear_hop_by_hop_response_headers_{true};

@@ -558,6 +558,12 @@ public:
    * @param num_streams the number of streams now allowed to be opened.
    */
   virtual void onMaxStreamsChanged(uint32_t num_streams) { UNREFERENCED_PARAMETER(num_streams); }
+
+  /**
+   * Fires when an HTTP/2 connection-level sending window transitions between full and not full.
+   * @param full supplies whether the connection-level sending window is currently full.
+   */
+  virtual void onHttp2ConnectionTxWindowFull(bool full) { UNREFERENCED_PARAMETER(full); }
 };
 
 /**

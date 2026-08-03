@@ -682,6 +682,7 @@ protected:
    * Return true if the disconnect callback has been scheduled.
    */
   bool sendPendingFramesAndHandleError();
+  void updateSendingWindowFull();
   void sendSettings(const envoy::config::core::v3::Http2ProtocolOptions& http2_options,
                     bool disable_push);
   void sendSettingsHelper(const envoy::config::core::v3::Http2ProtocolOptions& http2_options,
@@ -819,6 +820,7 @@ private:
   std::map<int32_t, StreamImpl*> pending_deferred_reset_streams_;
   bool dispatching_ : 1 = false;
   bool raised_goaway_ : 1 = false;
+  bool sending_window_full_ : 1 = false;
   Event::SchedulableCallbackPtr protocol_constraint_violation_callback_;
   Random::RandomGenerator& random_;
   MonotonicTime last_received_data_time_;

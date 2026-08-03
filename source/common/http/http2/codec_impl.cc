@@ -1732,6 +1732,7 @@ Status ConnectionImpl::sendPendingFrames() {
   }
 
   const int rc = adapter_->Send();
+  updateSendingWindowFull();
   if (rc != 0) {
     ASSERT(rc == ERR_CALLBACK_FAILURE);
     return codecProtocolError(codecStrError(rc));
@@ -1778,6 +1779,20 @@ bool ConnectionImpl::sendPendingFramesAndHandleError() {
     return true;
   }
   return false;
+}
+
+void ConnectionImpl::updateSendingWindowFull() {
+  if (adapter_ == nullptr) {
+    return;
+  }
+
+  const bool sending_window_full = adapter_->GetSendWindowSize() == 0;
+  if (sending_window_full == sending_window_full_) {
+    return;
+  }
+
+  sending_window_full_ = sending_window_full;
+  callbacks().onHttp2ConnectionTxWindowFull(sending_window_full_);
 }
 
 void ConnectionImpl::sendSettingsHelper(

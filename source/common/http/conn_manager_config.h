@@ -83,6 +83,7 @@ namespace Http {
   GAUGE(downstream_cx_http1_active, Accumulate)                                                    \
   GAUGE(downstream_cx_http2_active, Accumulate)                                                    \
   GAUGE(downstream_cx_http3_active, Accumulate)                                                    \
+  GAUGE(downstream_cx_http2_tx_window_full, Accumulate)                                            \
   GAUGE(downstream_cx_rx_bytes_buffered, Accumulate)                                               \
   GAUGE(downstream_cx_ssl_active, Accumulate)                                                      \
   GAUGE(downstream_cx_tx_bytes_buffered, Accumulate)                                               \

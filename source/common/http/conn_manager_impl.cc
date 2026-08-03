@@ -248,6 +248,10 @@ ConnectionManagerImpl::~ConnectionManagerImpl() {
     stats_.named_.downstream_cx_http1_soft_drain_.dec();
   }
 
+  if (downstream_cx_http2_tx_window_full_) {
+    stats_.named_.downstream_cx_http2_tx_window_full_.dec();
+  }
+
   conn_length_->complete();
   user_agent_.completeConnectionLength(*conn_length_);
 }
@@ -773,6 +777,19 @@ void ConnectionManagerImpl::maybeDrainDueToPrematureResets() {
 void ConnectionManagerImpl::onGoAway(GoAwayErrorCode) {
   // Currently we do nothing with remote go away frames. In the future we can decide to no longer
   // push resources if applicable.
+}
+
+void ConnectionManagerImpl::onHttp2ConnectionTxWindowFull(bool full) {
+  if (full == downstream_cx_http2_tx_window_full_) {
+    return;
+  }
+
+  downstream_cx_http2_tx_window_full_ = full;
+  if (downstream_cx_http2_tx_window_full_) {
+    stats_.named_.downstream_cx_http2_tx_window_full_.inc();
+  } else {
+    stats_.named_.downstream_cx_http2_tx_window_full_.dec();
+  }
 }
 
 void ConnectionManagerImpl::onIdleTimeout() {

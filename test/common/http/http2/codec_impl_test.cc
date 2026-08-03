@@ -2087,6 +2087,38 @@ TEST_P(Http2CodecImplFlowControlTest, TestFlowControlInPendingSendData) {
   EXPECT_EQ(initial_stream_window - 1, getStreamSendWindowSize(client_, 1));
 }
 
+TEST_P(Http2CodecImplFlowControlTest, Http2ConnectionTxWindowFullCallback) {
+  initialize();
+
+  TestRequestHeaderMapImpl request_headers;
+  HttpTestUtility::addDefaultHeaders(request_headers);
+  EXPECT_CALL(request_decoder_, decodeHeaders_(_, true));
+  EXPECT_OK(request_encoder_->encodeHeaders(request_headers, true));
+  driveToCompletion();
+
+  client_->getStream(1)->readDisable(true);
+
+  const uint32_t initial_connection_window = getSendWindowSize(server_);
+  ASSERT_GT(initial_connection_window, 0);
+
+  TestResponseHeaderMapImpl response_headers{{":status", "200"}};
+  EXPECT_CALL(response_decoder_, decodeHeaders_(_, false));
+  EXPECT_CALL(response_decoder_, decodeData(_, false)).Times(AnyNumber());
+  EXPECT_CALL(server_callbacks_, onHttp2ConnectionTxWindowFull(true));
+  EXPECT_OK(response_encoder_->encodeHeaders(response_headers, false));
+  Buffer::OwnedImpl response_data(std::string(initial_connection_window, 'a'));
+  response_encoder_->encodeData(response_data, false);
+  driveToCompletion();
+
+  EXPECT_EQ(0, getSendWindowSize(server_));
+
+  EXPECT_CALL(server_callbacks_, onHttp2ConnectionTxWindowFull(false));
+  client_->getStream(1)->readDisable(false);
+  driveToCompletion();
+
+  EXPECT_GT(getSendWindowSize(server_), 0);
+}
+
 // Set up the same asTestFlowControlInPendingSendData, but tears the stream down with an early reset
 // once the flow control window is full up.
 TEST_P(Http2CodecImplFlowControlTest, EarlyResetRestoresWindow) {
