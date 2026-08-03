@@ -997,6 +997,59 @@ TEST_F(ConnectionHandlerTest, CloseConnectionOnEmptyFilterChain) {
   EXPECT_CALL(*listener, onDestroy());
 }
 
+TEST_F(ConnectionHandlerTest, DownstreamConnectionAboveHighWatermarkPerWorkerGauge) {
+  Network::TcpListenerCallbacks* listener_callbacks;
+  auto listener = new NiceMock<Network::MockListener>();
+  TestListener* test_listener =
+      addListener(1, true, false, "test_listener", listener, &listener_callbacks);
+  handler_->addListener(std::nullopt, *test_listener, runtime_, random_);
+
+  EXPECT_CALL(manager_, findFilterChain(_, _)).WillOnce(Return(filter_chain_.get()));
+  auto* connection = new NiceMock<Network::MockServerConnection>();
+  EXPECT_CALL(dispatcher_, createServerConnection_(_)).WillOnce(Return(connection));
+  EXPECT_CALL(factory_, createNetworkFilterChain(_, _)).WillOnce(Return(true));
+  Network::MockConnectionSocket* accepted_socket = new NiceMock<Network::MockConnectionSocket>();
+  listener_callbacks->onAccept(Network::ConnectionSocketPtr{accepted_socket});
+
+  EXPECT_EQ(
+      0UL,
+      TestUtility::findGauge(stats_store_, "test.downstream_cx_above_high_watermark")->value());
+
+  connection->runHighWatermarkCallbacks();
+  EXPECT_EQ(
+      1UL,
+      TestUtility::findGauge(stats_store_, "test.downstream_cx_above_high_watermark")->value());
+
+  connection->runHighWatermarkCallbacks();
+  EXPECT_EQ(
+      1UL,
+      TestUtility::findGauge(stats_store_, "test.downstream_cx_above_high_watermark")->value());
+
+  connection->runLowWatermarkCallbacks();
+  EXPECT_EQ(
+      0UL,
+      TestUtility::findGauge(stats_store_, "test.downstream_cx_above_high_watermark")->value());
+
+  connection->runLowWatermarkCallbacks();
+  EXPECT_EQ(
+      0UL,
+      TestUtility::findGauge(stats_store_, "test.downstream_cx_above_high_watermark")->value());
+
+  connection->runHighWatermarkCallbacks();
+  EXPECT_EQ(
+      1UL,
+      TestUtility::findGauge(stats_store_, "test.downstream_cx_above_high_watermark")->value());
+
+  EXPECT_CALL(*access_log_, log(_, _));
+  connection->close(Network::ConnectionCloseType::NoFlush);
+  dispatcher_.clearDeferredDeleteList();
+  EXPECT_EQ(
+      0UL,
+      TestUtility::findGauge(stats_store_, "test.downstream_cx_above_high_watermark")->value());
+
+  EXPECT_CALL(*listener, onDestroy());
+}
+
 TEST_F(ConnectionHandlerTest, NormalRedirect) {
   Network::TcpListenerCallbacks* listener_callbacks1;
   auto listener1 = new NiceMock<Network::MockListener>();

@@ -902,6 +902,13 @@ envoy.filters.network.direct_response:
   status: stable
   type_urls:
   - envoy.extensions.filters.network.direct_response.v3.Config
+envoy.filters.network.downstream_watermark_stats:
+  categories:
+  - envoy.filters.network
+  security_posture: robust_to_untrusted_downstream
+  status: alpha
+  type_urls:
+  - envoy.extensions.filters.network.downstream_watermark_stats.v3.DownstreamWatermarkStats
 envoy.filters.network.dubbo_proxy:
   categories:
   - envoy.filters.network

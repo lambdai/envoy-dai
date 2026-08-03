@@ -13,6 +13,7 @@ filters.
   client_ssl_auth_filter
   connection_limit_filter
   direct_response_filter
+  downstream_watermark_stats_filter
   dubbo_proxy_filter
   echo_filter
   ext_authz_filter

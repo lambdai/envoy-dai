@@ -257,6 +257,7 @@ EXTENSIONS = {
 
     "envoy.filters.network.connection_limit":                     "//source/extensions/filters/network/connection_limit:config",
     "envoy.filters.network.direct_response":                      "//source/extensions/filters/network/direct_response:config",
+    "envoy.filters.network.downstream_watermark_stats":            "//source/extensions/filters/network/downstream_watermark_stats:config",
     "envoy.filters.network.dubbo_proxy":                          "//source/extensions/filters/network/dubbo_proxy:config",
     "envoy.filters.network.dynamic_modules":                      "//source/extensions/filters/network/dynamic_modules:config",
     "envoy.filters.network.echo":                                 "//source/extensions/filters/network/echo:config",

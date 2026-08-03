@@ -175,13 +175,14 @@ struct ActiveTcpConnection : LinkedObject<ActiveTcpConnection>,
   ~ActiveTcpConnection() override;
   // Network::ConnectionCallbacks
   void onEvent(Network::ConnectionEvent event) override;
-  void onAboveWriteBufferHighWatermark() override {}
-  void onBelowWriteBufferLowWatermark() override {}
+  void onAboveWriteBufferHighWatermark() override;
+  void onBelowWriteBufferLowWatermark() override;
 
   std::unique_ptr<StreamInfo::StreamInfo> stream_info_;
   ActiveConnections& active_connections_;
   Network::ConnectionPtr connection_;
   Stats::TimespanPtr conn_length_;
+  bool above_high_watermark_{false};
 };
 
 using ActiveConnectionPtr = std::unique_ptr<ActiveTcpConnection>;

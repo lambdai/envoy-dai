@@ -116,6 +116,7 @@ on either accepted or active connections.
 
    downstream_cx_total, Counter, Total connections on this handler.
    downstream_cx_active, Gauge, Total active connections on this handler.
+   downstream_cx_above_high_watermark, Gauge, Total active connections on this handler currently above the write buffer high watermark.
 
 .. _config_listener_manager_stats:
 

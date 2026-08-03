@@ -33,6 +33,7 @@ struct ListenerStats {
 // This macro defines the listener stats which each Envoy worker will have.
 #define ALL_PER_HANDLER_LISTENER_STATS(COUNTER, GAUGE)                                             \
   COUNTER(downstream_cx_total)                                                                     \
+  GAUGE(downstream_cx_above_high_watermark, Accumulate)                                            \
   GAUGE(downstream_cx_active, Accumulate)
 
 /**

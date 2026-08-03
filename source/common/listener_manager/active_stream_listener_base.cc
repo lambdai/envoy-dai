@@ -101,6 +101,9 @@ ActiveTcpConnection::ActiveTcpConnection(ActiveConnections& active_connections,
 ActiveTcpConnection::~ActiveTcpConnection() {
   ActiveStreamListenerBase::emitLogs(*active_connections_.listener_.config_, *stream_info_);
   auto& listener = active_connections_.listener_;
+  if (above_high_watermark_) {
+    listener.per_worker_stats_.downstream_cx_above_high_watermark_.dec();
+  }
   listener.stats_.downstream_cx_active_.dec();
   listener.stats_.downstream_cx_destroy_.inc();
   listener.per_worker_stats_.downstream_cx_active_.dec();
@@ -111,6 +114,22 @@ ActiveTcpConnection::~ActiveTcpConnection() {
 
   // Active handler connections (not listener).
   listener.parent_.decNumConnections();
+}
+
+void ActiveTcpConnection::onAboveWriteBufferHighWatermark() {
+  if (!above_high_watermark_) {
+    above_high_watermark_ = true;
+    auto& listener = active_connections_.listener_;
+    listener.per_worker_stats_.downstream_cx_above_high_watermark_.inc();
+  }
+}
+
+void ActiveTcpConnection::onBelowWriteBufferLowWatermark() {
+  if (above_high_watermark_) {
+    above_high_watermark_ = false;
+    auto& listener = active_connections_.listener_;
+    listener.per_worker_stats_.downstream_cx_above_high_watermark_.dec();
+  }
 }
 
 void ActiveTcpConnection::onEvent(Network::ConnectionEvent event) {

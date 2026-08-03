@@ -20,6 +20,8 @@ public:
   const std::string Echo = "envoy.filters.network.echo";
   // Direct response filter
   const std::string DirectResponse = "envoy.filters.network.direct_response";
+  // Downstream watermark stats filter
+  const std::string DownstreamWatermarkStats = "envoy.filters.network.downstream_watermark_stats";
   // RocketMQ proxy filter
   const std::string RocketmqProxy = "envoy.filters.network.rocketmq_proxy";
   // Dubbo proxy filter
